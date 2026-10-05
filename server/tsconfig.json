@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": false,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "ES2023",
+    // DOM 是必需的：@mozilla/readability 与 jsdom 的类型都建立在 lib.dom 之上，
+    // 只给 ES2023 会直接报 `Cannot find name 'Document'`。
+    // 这里只是借用它的类型，运行时并不存在全局 document（DOM 来自 jsdom 实例）。
+    "lib": ["ES2023", "DOM"],
+    "sourceMap": true,
+    "outDir": "./dist",
+    // TS 6/7 起 rootDir 必须显式声明（决定 dist 的目录层级），否则直接报 TS5011。
+    "rootDir": "./src",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

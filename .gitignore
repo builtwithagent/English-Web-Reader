@@ -6,6 +6,9 @@ dist/
 server/dist/
 web/dist/
 
+# TS 增量编译缓存
+*.tsbuildinfo
+
 # 运行时数据（翻译缓存等）
 data/
 server/data/
