@@ -164,6 +164,7 @@ export type ErrorCode =
   | 'dns_failed'
   | 'blocked_target'
   | 'timeout'
+  | 'connection_reset'
   | 'blocked_by_site'
   | 'not_html'
   | 'size_limit'

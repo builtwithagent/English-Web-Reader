@@ -1,0 +1,1549 @@
+{
+  "base": "http://127.0.0.1:3000",
+  "at": "2026-10-05T05:06:03.092Z",
+  "results": [
+    {
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Introduction",
+      "host": "developer.mozilla.org",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 927,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Introduction",
+        "title": "Introduction - JavaScript | MDN",
+        "siteName": "developer.mozilla.org",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 50,
+        "translatable": 48,
+        "types": {
+          "p": 30,
+          "h2": 7,
+          "ul": 6,
+          "h3": 4,
+          "pre": 2,
+          "ol": 1
+        },
+        "chars": 9636,
+        "firstText": "This chapter introduces JavaScript and discusses some of its fundamental concept"
+      }
+    },
+    {
+      "url": "https://www.freecodecamp.org/news/",
+      "host": "freecodecamp.org",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 1186,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.freecodecamp.org/news/",
+        "title": "freeCodeCamp.org",
+        "siteName": "freeCodeCamp.org",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 4,
+        "translatable": 4,
+        "types": {
+          "p": 4
+        },
+        "chars": 472,
+        "firstText": "freeCodeCamp is a donor-supported tax-exempt 501(c)(3) charity organization (Uni"
+      }
+    },
+    {
+      "url": "https://docs.python.org/3/tutorial/index.html",
+      "host": "docs.python.org",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 1943,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://docs.python.org/3/tutorial/index.html",
+        "title": "The Python Tutorial",
+        "siteName": "Python documentation",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 10,
+        "translatable": 10,
+        "types": {
+          "p": 9,
+          "ul": 1
+        },
+        "chars": 6070,
+        "firstText": "Tip"
+      }
+    },
+    {
+      "url": "https://doc.rust-lang.org/book/ch01-00-getting-started.html",
+      "host": "doc.rust-lang.org",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 1085,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://doc.rust-lang.org/book/ch01-00-getting-started.html",
+        "title": "Getting Started - The Rust Programming Language",
+        "siteName": "doc.rust-lang.org",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 8,
+        "translatable": 8,
+        "types": {
+          "h2": 2,
+          "p": 5,
+          "ul": 1
+        },
+        "chars": 421,
+        "firstText": "Keyboard shortcuts"
+      }
+    },
+    {
+      "url": "https://www.typescriptlang.org/docs/handbook/intro.html",
+      "host": "typescriptlang.org",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 997,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.typescriptlang.org/docs/handbook/intro.html",
+        "title": "Handbook - The TypeScript Handbook",
+        "siteName": "www.typescriptlang.org",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 16,
+        "translatable": 16,
+        "types": {
+          "h2": 3,
+          "p": 10,
+          "ul": 2,
+          "h3": 1
+        },
+        "chars": 4711,
+        "firstText": "About this Handbook"
+      }
+    },
+    {
+      "url": "https://nodejs.org/en/learn/getting-started/introduction-to-nodejs",
+      "host": "nodejs.org",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 1992,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://nodejs.org/learn/getting-started/introduction-to-nodejs",
+        "title": "Introduction to Node.js | Node.js Learn",
+        "siteName": "nodejs.org",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 29,
+        "translatable": 24,
+        "types": {
+          "p": 23,
+          "h2": 1,
+          "pre": 5
+        },
+        "chars": 3991,
+        "firstText": "Node.js is an open-source and cross-platform JavaScript runtime environment. It "
+      }
+    },
+    {
+      "url": "https://react.dev/learn",
+      "host": "react.dev",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 2241,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://react.dev/learn",
+        "title": "Quick Start – React",
+        "siteName": "react.dev",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 90,
+        "translatable": 66,
+        "types": {
+          "p": 49,
+          "h3": 1,
+          "ul": 1,
+          "h2": 11,
+          "pre": 24,
+          "figcaption": 4
+        },
+        "chars": 11724,
+        "firstText": "Welcome to the React documentation! This page will give you an introduction to 8"
+      }
+    },
+    {
+      "url": "https://dev.to/",
+      "host": "dev.to",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 4581,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://dev.to/",
+        "title": "DEV Community",
+        "siteName": "DEV Community",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 7,
+        "translatable": 7,
+        "types": {
+          "p": 5,
+          "h2": 1,
+          "h4": 1
+        },
+        "chars": 332,
+        "firstText": "A space to discuss and keep up software development and manage your software car"
+      }
+    },
+    {
+      "url": "https://kubernetes.io/docs/concepts/overview/",
+      "host": "kubernetes.io",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 2223,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://kubernetes.io/docs/concepts/overview/",
+        "title": "Overview",
+        "siteName": "Kubernetes",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 26,
+        "translatable": 26,
+        "types": {
+          "p": 18,
+          "h2": 4,
+          "ul": 4
+        },
+        "chars": 9485,
+        "firstText": "Kubernetes is a portable, extensible, open source platform for managing containe"
+      }
+    },
+    {
+      "url": "https://docs.nestjs.com/",
+      "host": "docs.nestjs.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 422,
+      "ms": 2442,
+      "ok": false,
+      "error": {
+        "code": "extract_failed",
+        "message": "没能识别出这个页面的正文"
+      },
+      "article": null
+    },
+    {
+      "url": "https://news.ycombinator.com/",
+      "host": "news.ycombinator.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 504,
+      "ms": 5450,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/dotnet/csharp/tour-of-csharp/",
+      "host": "learn.microsoft.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 646,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://learn.microsoft.com/en-us/dotnet/csharp/tour-of-csharp/",
+        "title": "C# docs - get started, tutorials, reference. - A tour of C#",
+        "siteName": "learn.microsoft.com",
+        "byline": "BillWagner",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "heuristic",
+        "truncated": false,
+        "blocks": 36,
+        "translatable": 36,
+        "types": {
+          "h1": 1,
+          "p": 1,
+          "h2": 6,
+          "h3": 14,
+          "ul": 14
+        },
+        "chars": 1341,
+        "firstText": "C# documentation"
+      }
+    },
+    {
+      "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
+      "host": "docs.aws.amazon.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 726,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html",
+        "title": "What is Amazon S3? - Amazon Simple Storage Service",
+        "siteName": "docs.aws.amazon.com",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 117,
+        "translatable": 117,
+        "types": {
+          "p": 74,
+          "ul": 15,
+          "h2": 6,
+          "h3": 21,
+          "h4": 1
+        },
+        "chars": 33755,
+        "firstText": "Amazon Simple Storage Service (Amazon S3) is an object storage service that offe"
+      }
+    },
+    {
+      "url": "https://www.w3schools.com/js/js_intro.asp",
+      "host": "w3schools.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 1427,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.w3schools.com/js/js_intro.asp",
+        "title": "JavaScript Introduction",
+        "siteName": "W3Schools",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 27,
+        "translatable": 27,
+        "types": {
+          "h2": 6,
+          "p": 18,
+          "h3": 3
+        },
+        "chars": 1371,
+        "firstText": "What Can JavaScript Do?"
+      }
+    },
+    {
+      "url": "https://www.postgresql.org/docs/current/tutorial.html",
+      "host": "postgresql.org",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 2746,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.postgresql.org/docs/current/tutorial.html",
+        "title": "Part I. Tutorial",
+        "siteName": "PostgreSQL Documentation",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 2,
+        "translatable": 2,
+        "types": {
+          "p": 2
+        },
+        "chars": 767,
+        "firstText": "Welcome to the PostgreSQL Tutorial. The tutorial is intended to give an introduc"
+      }
+    },
+    {
+      "url": "https://openai.com/news/",
+      "host": "openai.com",
+      "section": "B",
+      "sectionTitle": "AI / 大模型官方博客",
+      "httpStatus": 502,
+      "ms": 412,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://huggingface.co/blog",
+      "host": "huggingface.co",
+      "section": "B",
+      "sectionTitle": "AI / 大模型官方博客",
+      "httpStatus": 504,
+      "ms": 97,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://redis.io/docs/latest/develop/",
+      "host": "redis.io",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 3012,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://redis.io/docs/latest/develop/",
+        "title": "Develop with Redis",
+        "siteName": "Docs",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 9,
+        "translatable": 9,
+        "types": {
+          "p": 7,
+          "ol": 2
+        },
+        "chars": 245,
+        "firstText": "Learn how to develop with Redis"
+      }
+    },
+    {
+      "url": "https://www.anthropic.com/engineering/managed-agents",
+      "host": "anthropic.com",
+      "section": "B",
+      "sectionTitle": "AI / 大模型官方博客",
+      "httpStatus": 200,
+      "ms": 757,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.anthropic.com/engineering/managed-agents",
+        "title": "Scaling Managed Agents: Decoupling the brain from the hands",
+        "siteName": "www.anthropic.com",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 38,
+        "translatable": 34,
+        "types": {
+          "p": 29,
+          "img": 4,
+          "h2": 5
+        },
+        "chars": 12701,
+        "firstText": "Harnesses encode assumptions that go stale as models improve. Managed Agents—our"
+      }
+    },
+    {
+      "url": "https://github.com/facebook/react",
+      "host": "github.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 200,
+      "ms": 2194,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://github.com/react/react",
+        "title": "GitHub - react/react: The library for web and native user interfaces.",
+        "siteName": "GitHub",
+        "byline": "react",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 28,
+        "translatable": 27,
+        "types": {
+          "p": 16,
+          "ul": 3,
+          "h2": 4,
+          "pre": 1,
+          "h3": 4
+        },
+        "chars": 3275,
+        "firstText": "The library for web and native user interfaces. Contribute to react/react develo"
+      }
+    },
+    {
+      "url": "https://deepmind.google/discover/blog/",
+      "host": "deepmind.google",
+      "section": "B",
+      "sectionTitle": "AI / 大模型官方博客",
+      "httpStatus": 422,
+      "ms": 1029,
+      "ok": false,
+      "error": {
+        "code": "extract_failed",
+        "message": "没能识别出这个页面的正文"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.npmjs.com/package/react",
+      "host": "npmjs.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 502,
+      "ms": 2267,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://apnews.com/",
+      "host": "apnews.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 502,
+      "ms": 891,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://blog.google/technology/ai/",
+      "host": "blog.google",
+      "section": "B",
+      "sectionTitle": "AI / 大模型官方博客",
+      "httpStatus": 200,
+      "ms": 3019,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://blog.google/innovation-and-ai/technology/ai/",
+        "title": "AI",
+        "siteName": "blog.google",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "heuristic",
+        "truncated": false,
+        "blocks": 29,
+        "translatable": 18,
+        "types": {
+          "h1": 1,
+          "p": 3,
+          "img": 11,
+          "h2": 5,
+          "h3": 9
+        },
+        "chars": 854,
+        "firstText": "AI"
+      }
+    },
+    {
+      "url": "https://ai.meta.com/blog/",
+      "host": "ai.meta.com",
+      "section": "B",
+      "sectionTitle": "AI / 大模型官方博客",
+      "httpStatus": 504,
+      "ms": 5262,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.bbc.com/news",
+      "host": "bbc.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5019,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.npr.org/",
+      "host": "npr.org",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 200,
+      "ms": 1154,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.npr.org/",
+        "title": "NPR - Breaking News, Analysis, Music, Arts & Podcasts",
+        "siteName": "NPR",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 1,
+        "translatable": 1,
+        "types": {
+          "p": 1
+        },
+        "chars": 205,
+        "firstText": "NPR - Breaking News, Analysis, Music, Arts & Podcasts Top stories in the U.S. an"
+      }
+    },
+    {
+      "url": "https://www.reuters.com/",
+      "host": "reuters.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5600,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://edition.cnn.com/",
+      "host": "edition.cnn.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 502,
+      "ms": 1023,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.theguardian.com/international",
+      "host": "theguardian.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5021,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://news.sky.com/",
+      "host": "news.sky.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 502,
+      "ms": 422,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.latimes.com/",
+      "host": "latimes.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 838,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.usatoday.com/",
+      "host": "usatoday.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 502,
+      "ms": 984,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.aljazeera.com/",
+      "host": "aljazeera.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5535,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.abc.net.au/news",
+      "host": "abc.net.au",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5291,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.nytimes.com/",
+      "host": "nytimes.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5059,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.wsj.com/",
+      "host": "wsj.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5047,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://techcrunch.com/",
+      "host": "techcrunch.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 200,
+      "ms": 1019,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://techcrunch.com/",
+        "title": "TechCrunch | Startup and Technology News",
+        "siteName": "TechCrunch",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 4,
+        "translatable": 4,
+        "types": {
+          "p": 3,
+          "h2": 1
+        },
+        "chars": 517,
+        "firstText": "Startups"
+      }
+    },
+    {
+      "url": "https://www.ft.com/",
+      "host": "ft.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5761,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://arstechnica.com/",
+      "host": "arstechnica.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 502,
+      "ms": 1680,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.economist.com/",
+      "host": "economist.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5701,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array",
+      "host": "stackoverflow.com",
+      "section": "A",
+      "sectionTitle": "开发者文档与技术社区",
+      "httpStatus": 504,
+      "ms": 25010,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.theverge.com/",
+      "host": "theverge.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 200,
+      "ms": 4115,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.theverge.com/",
+        "title": "The Verge",
+        "siteName": "The Verge",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 3,
+        "translatable": 3,
+        "types": {
+          "p": 2,
+          "blockquote": 1
+        },
+        "chars": 990,
+        "firstText": "One of the authors of the Stochastic Parrots paper explains what it actually mea"
+      }
+    },
+    {
+      "url": "https://www.bloomberg.com/",
+      "host": "bloomberg.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 504,
+      "ms": 5184,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.engadget.com/",
+      "host": "engadget.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 422,
+      "ms": 697,
+      "ok": false,
+      "error": {
+        "code": "extract_failed",
+        "message": "没能识别出这个页面的正文"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.technologyreview.com/",
+      "host": "technologyreview.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 200,
+      "ms": 2314,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.technologyreview.com/",
+        "title": "MIT Technology Review",
+        "siteName": "MIT Technology Review",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 132,
+        "translatable": 132,
+        "types": {
+          "h2": 2,
+          "p": 113,
+          "h3": 17
+        },
+        "chars": 32780,
+        "firstText": "Magazine"
+      }
+    },
+    {
+      "url": "https://spectrum.ieee.org/",
+      "host": "spectrum.ieee.org",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 200,
+      "ms": 2731,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://spectrum.ieee.org/",
+        "title": "IEEE Spectrum",
+        "siteName": "IEEE Spectrum",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 18,
+        "translatable": 18,
+        "types": {
+          "p": 17,
+          "h2": 1
+        },
+        "chars": 390,
+        "firstText": "The October issue of IEEE Spectrum is here!"
+      }
+    },
+    {
+      "url": "https://www.bleepingcomputer.com/",
+      "host": "bleepingcomputer.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 502,
+      "ms": 2555,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.scientificamerican.com/",
+      "host": "scientificamerican.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 200,
+      "ms": 1665,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.scientificamerican.com/",
+        "title": "Scientific American",
+        "siteName": "Scientific American",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 111,
+        "translatable": 79,
+        "types": {
+          "img": 32,
+          "p": 76,
+          "h3": 3
+        },
+        "chars": 5087,
+        "firstText": "Attachment is the term psychologists use for the most significant relationships "
+      }
+    },
+    {
+      "url": "https://www.britannica.com/technology/artificial-intelligence",
+      "host": "britannica.com",
+      "section": "E",
+      "sectionTitle": "百科 / 参考",
+      "httpStatus": 502,
+      "ms": 1477,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://arxiv.org/abs/1706.03762",
+      "host": "arxiv.org",
+      "section": "F",
+      "sectionTitle": "学术 / 科研",
+      "httpStatus": 200,
+      "ms": 460,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://arxiv.org/abs/1706.03762",
+        "title": "Attention Is All You Need",
+        "siteName": "arXiv.org",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 4,
+        "translatable": 4,
+        "types": {
+          "p": 2,
+          "blockquote": 1,
+          "h2": 1
+        },
+        "chars": 1541,
+        "firstText": "View PDF HTML (experimental)"
+      }
+    },
+    {
+      "url": "https://www.wired.com/",
+      "host": "wired.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 200,
+      "ms": 7912,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.wired.com/",
+        "title": "WIRED - The Latest in Technology, Science, Culture and Business",
+        "siteName": "WIRED",
+        "byline": "Condé Nast",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 15,
+        "translatable": 15,
+        "types": {
+          "h2": 2,
+          "p": 13
+        },
+        "chars": 1017,
+        "firstText": "Today’s Picks"
+      }
+    },
+    {
+      "url": "https://www.quantamagazine.org/",
+      "host": "quantamagazine.org",
+      "section": "E",
+      "sectionTitle": "百科 / 参考",
+      "httpStatus": 200,
+      "ms": 3657,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.quantamagazine.org/",
+        "title": "Science and Math News | Quanta Magazine",
+        "siteName": "Quanta Magazine",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 24,
+        "translatable": 24,
+        "types": {
+          "p": 15,
+          "h2": 4,
+          "h3": 5
+        },
+        "chars": 1049,
+        "firstText": "Xinyu Si/University of Pittsburgh"
+      }
+    },
+    {
+      "url": "https://pubmed.ncbi.nlm.nih.gov/31452104/",
+      "host": "pubmed.ncbi.nlm.nih.gov",
+      "section": "F",
+      "sectionTitle": "学术 / 科研",
+      "httpStatus": 422,
+      "ms": 1084,
+      "ok": false,
+      "error": {
+        "code": "extract_failed",
+        "message": "没能识别出这个页面的正文"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.nature.com/articles/d41586-024-00001-2",
+      "host": "nature.com",
+      "section": "F",
+      "sectionTitle": "学术 / 科研",
+      "httpStatus": 502,
+      "ms": 2922,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/JavaScript",
+      "host": "en.wikipedia.org",
+      "section": "E",
+      "sectionTitle": "百科 / 参考",
+      "httpStatus": 504,
+      "ms": 5033,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.marketwatch.com/",
+      "host": "marketwatch.com",
+      "section": "G",
+      "sectionTitle": "商业 / 财经",
+      "httpStatus": 502,
+      "ms": 278,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.nasa.gov/",
+      "host": "nasa.gov",
+      "section": "H",
+      "sectionTitle": "官方 / 国际机构",
+      "httpStatus": 200,
+      "ms": 924,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.nasa.gov/",
+        "title": "NASA",
+        "siteName": "NASA",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 4,
+        "translatable": 4,
+        "types": {
+          "h3": 1,
+          "h2": 1,
+          "p": 2
+        },
+        "chars": 609,
+        "firstText": "Two-Day Aerospace Festival"
+      }
+    },
+    {
+      "url": "https://www.cnbc.com/",
+      "host": "cnbc.com",
+      "section": "G",
+      "sectionTitle": "商业 / 财经",
+      "httpStatus": 200,
+      "ms": 4154,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.cnbc.com/world/?region=world",
+        "title": "International: Top News And Analysis",
+        "siteName": "CNBC",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 2,
+        "translatable": 2,
+        "types": {
+          "h2": 1,
+          "p": 1
+        },
+        "chars": 228,
+        "firstText": "Trump tells South Korea to sign on to Alaska LNG deal or 'I'll just charge them "
+      }
+    },
+    {
+      "url": "https://www.businessinsider.com/",
+      "host": "businessinsider.com",
+      "section": "G",
+      "sectionTitle": "商业 / 财经",
+      "httpStatus": 504,
+      "ms": 5602,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.un.org/en/",
+      "host": "un.org",
+      "section": "H",
+      "sectionTitle": "官方 / 国际机构",
+      "httpStatus": 200,
+      "ms": 4300,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.un.org/en/",
+        "title": "United Nations | Peace, dignity and equality <BR>on a healthy planet",
+        "siteName": "United Nations",
+        "byline": "United Nations",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 75,
+        "translatable": 74,
+        "types": {
+          "p": 45,
+          "img": 1,
+          "h2": 5,
+          "h4": 23,
+          "h3": 1
+        },
+        "chars": 13179,
+        "firstText": "Peace, dignity and equality on a healthy planet"
+      }
+    },
+    {
+      "url": "https://www.forbes.com/",
+      "host": "forbes.com",
+      "section": "G",
+      "sectionTitle": "商业 / 财经",
+      "httpStatus": 504,
+      "ms": 6141,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.reddit.com/r/programming/",
+      "host": "reddit.com",
+      "section": "I",
+      "sectionTitle": "社交 / 社区（多为 JS 渲染，预期是反例）",
+      "httpStatus": 504,
+      "ms": 209,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.cbsnews.com/",
+      "host": "cbsnews.com",
+      "section": "C",
+      "sectionTitle": "国际新闻（英文）",
+      "httpStatus": 200,
+      "ms": 25181,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.cbsnews.com/",
+        "title": "CBS News | Breaking news, top stories & today's latest headlines",
+        "siteName": "CBS News",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "heuristic",
+        "truncated": false,
+        "blocks": 4,
+        "translatable": 3,
+        "types": {
+          "img": 1,
+          "h2": 1,
+          "p": 1,
+          "ul": 1
+        },
+        "chars": 355,
+        "firstText": "FlyDubai co-pilot was likely lone wolf, Israeli investigators believe"
+      }
+    },
+    {
+      "url": "https://www.gov.uk/",
+      "host": "gov.uk",
+      "section": "H",
+      "sectionTitle": "官方 / 国际机构",
+      "httpStatus": 200,
+      "ms": 1287,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.gov.uk/",
+        "title": "Welcome to GOV.UK",
+        "siteName": "www.gov.uk",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 11,
+        "translatable": 10,
+        "types": {
+          "h2": 5,
+          "ul": 2,
+          "h3": 1,
+          "p": 2,
+          "img": 1
+        },
+        "chars": 381,
+        "firstText": "Popular on GOV.UK"
+      }
+    },
+    {
+      "url": "https://www.who.int/",
+      "host": "who.int",
+      "section": "H",
+      "sectionTitle": "官方 / 国际机构",
+      "httpStatus": 200,
+      "ms": 2501,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.who.int/",
+        "title": "World Health Organization (WHO)",
+        "siteName": "www.who.int",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 20,
+        "translatable": 20,
+        "types": {
+          "h2": 7,
+          "p": 5,
+          "h3": 8
+        },
+        "chars": 378,
+        "firstText": "New WHO estimates show changing global health landscape"
+      }
+    },
+    {
+      "url": "https://www.amazon.com/",
+      "host": "amazon.com",
+      "section": "J",
+      "sectionTitle": "电商（非文章页，预期是反例）",
+      "httpStatus": 422,
+      "ms": 389,
+      "ok": false,
+      "error": {
+        "code": "extract_failed",
+        "message": "没能识别出这个页面的正文"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.ebay.com/",
+      "host": "ebay.com",
+      "section": "J",
+      "sectionTitle": "电商（非文章页，预期是反例）",
+      "httpStatus": 502,
+      "ms": 270,
+      "ok": false,
+      "error": {
+        "code": "blocked_by_site",
+        "message": "目标网站拒绝了抓取",
+        "hint": "该站点可能有反爬保护，或需要登录才能阅读"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.whitehouse.gov/",
+      "host": "whitehouse.gov",
+      "section": "H",
+      "sectionTitle": "官方 / 国际机构",
+      "httpStatus": 200,
+      "ms": 1987,
+      "ok": true,
+      "error": null,
+      "article": {
+        "finalUrl": "https://www.whitehouse.gov/",
+        "title": "The White House",
+        "siteName": "The White House",
+        "byline": "",
+        "lang": "en",
+        "isEnglish": true,
+        "extractLevel": "readability",
+        "truncated": false,
+        "blocks": 9,
+        "translatable": 9,
+        "types": {
+          "p": 4,
+          "h3": 5
+        },
+        "chars": 1141,
+        "firstText": "Under President Donald Trump’s second administration, the United States has surg"
+      }
+    },
+    {
+      "url": "https://www.quora.com/",
+      "host": "quora.com",
+      "section": "I",
+      "sectionTitle": "社交 / 社区（多为 JS 渲染，预期是反例）",
+      "httpStatus": 504,
+      "ms": 5021,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://medium.com/",
+      "host": "medium.com",
+      "section": "I",
+      "sectionTitle": "社交 / 社区（多为 JS 渲染，预期是反例）",
+      "httpStatus": 504,
+      "ms": 5352,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    },
+    {
+      "url": "https://www.tomshardware.com/",
+      "host": "tomshardware.com",
+      "section": "D",
+      "sectionTitle": "科技媒体",
+      "httpStatus": 504,
+      "ms": 25017,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "抓取超时，网站响应太慢",
+        "hint": "稍后再试，或换一个来源"
+      },
+      "article": null
+    }
+  ]
+}

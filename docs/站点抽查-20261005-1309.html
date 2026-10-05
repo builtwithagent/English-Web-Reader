@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>英文站点抽查 · 阅读器实际效果</title>
+<style>
+  :root { --line:#e3e8ee; --ink:#1f2328; --soft:#57606a; --muted:#8c959f; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:28px 22px 60px; background:#f4f6f8; color:var(--ink);
+         font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif; }
+  h1 { font-size:20px; margin:0 0 6px; }
+  .sub { color:var(--soft); margin:0 0 22px; font-size:13px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(430px,1fr)); gap:18px; }
+  .card { margin:0; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden;
+          box-shadow:0 1px 3px rgba(27,31,36,.05); }
+  .card.bad { border-color:#ffc9c9; }
+  .card.warn { border-color:#ffe0a3; }
+  figcaption { padding:12px 14px 13px; }
+  .head { display:flex; align-items:center; gap:8px; margin-bottom:7px; flex-wrap:wrap; }
+  .head b { font-size:13.5px; }
+  .note { color:var(--muted); font-size:12px; margin-left:auto; }
+  .tag { font-size:11px; padding:1.5px 7px; border-radius:999px; border:1px solid; }
+  .tag.ok { color:#1a7f37; border-color:#b7e0c0; background:#f0fbf3; }
+  .tag.warn { color:#9a6700; border-color:#f0d999; background:#fff9e8; }
+  .tag.bad { color:#c0392b; border-color:#ffc9c9; background:#fff5f5; }
+  .stats { font-size:12px; color:var(--soft); margin-bottom:5px; }
+  .title { font-size:12.5px; font-weight:600; margin-bottom:3px; }
+  .first { font-size:12px; color:var(--muted); line-height:1.5; }
+  .card img { display:block; width:100%; max-height:460px; object-fit:cover; object-position:top;
+              border-top:1px solid var(--line); background:#fff; }
+</style></head><body>
+<h1>英文站点抽查 · 阅读器实际效果</h1>
+<p class="sub">无头 Chrome 实拍，20261005-1309 · 视口 1180px · 截图只显示页面上部，完整图见 docs/design/</p>
+<div class="grid">
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>developer.mozilla.org</b>
+        <span class="note">技术文档</span>
+      </div>
+      <div class="stats">块 98（原文 48 / 译文 48 / 共享 2）</div>
+      <div class="title">Introduction - JavaScript | MDN</div>
+      <div class="first">「This chapter introduces JavaScript and discusses some of its fundamental concepts.」</div>
+    </figcaption>
+    <img src="design/站点抽查-developer.mozilla.org-20261005-1309.png" alt="developer.mozilla.org" loading="lazy">
+  </figure>
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>docs.aws.amazon.com</b>
+        <span class="note">官方文档</span>
+      </div>
+      <div class="stats">块 234（原文 117 / 译文 117 / 共享 0）</div>
+      <div class="title">What is Amazon S3? - Amazon Simple Storage Service</div>
+      <div class="first">「Amazon Simple Storage Service (Amazon S3) is an object storage service that offers industry-leading scalability, data av」</div>
+    </figcaption>
+    <img src="design/站点抽查-docs.aws.amazon.com-20261005-1309.png" alt="docs.aws.amazon.com" loading="lazy">
+  </figure>
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>react.dev</b>
+        <span class="note">前端文档</span>
+      </div>
+      <div class="stats">块 156（原文 66 / 译文 66 / 共享 24）</div>
+      <div class="title">Quick Start – React</div>
+      <div class="first">「Welcome to the React documentation! This page will give you an introduction to 80% of the React concepts that you will u」</div>
+    </figcaption>
+    <img src="design/站点抽查-react.dev-20261005-1309.png" alt="react.dev" loading="lazy">
+  </figure>
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>anthropic.com</b>
+        <span class="note">AI 长文（含插图）</span>
+      </div>
+      <div class="stats">块 72（原文 34 / 译文 34 / 共享 4） · 图 4</div>
+      <div class="title">Scaling Managed Agents: Decoupling the brain from the hands</div>
+      <div class="first">「Harnesses encode assumptions that go stale as models improve. Managed Agents—our hosted service for long-horizon agent w」</div>
+    </figcaption>
+    <img src="design/站点抽查-anthropic.com-20261005-1309.png" alt="anthropic.com" loading="lazy">
+  </figure>
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>scientificamerican.com</b>
+        <span class="note">科普媒体</span>
+      </div>
+      <div class="stats">块 181（原文 76 / 译文 76 / 共享 29） · 图 29</div>
+      <div class="title">Scientific American</div>
+      <div class="first">「Attachment is the term psychologists use for the most significant relationships that hold people’s lives together」</div>
+    </figcaption>
+    <img src="design/站点抽查-scientificamerican.com-20261005-1309.png" alt="scientificamerican.com" loading="lazy">
+  </figure>
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>techcrunch.com</b>
+        <span class="note">科技媒体首页</span>
+      </div>
+      <div class="stats">块 8（原文 4 / 译文 4 / 共享 0）</div>
+      <div class="title">TechCrunch | Startup and Technology News</div>
+      <div class="first">「Startups」</div>
+    </figcaption>
+    <img src="design/站点抽查-techcrunch.com-20261005-1309.png" alt="techcrunch.com" loading="lazy">
+  </figure>
+  <figure class="card warn">
+    <figcaption>
+      <div class="head">
+        <span class="tag warn">提取偏少</span>
+        <b>npr.org</b>
+        <span class="note">新闻首页</span>
+      </div>
+      <div class="stats">块 2（原文 1 / 译文 1 / 共享 0）</div>
+      <div class="title">NPR - Breaking News, Analysis, Music, Arts &amp; Podcasts</div>
+      <div class="first">「NPR - Breaking News, Analysis, Music, Arts &amp; Podcasts Top stories in the U.S. and world news, politics, health, science,」</div>
+    </figcaption>
+    <img src="design/站点抽查-npr.org-20261005-1309.png" alt="npr.org" loading="lazy">
+  </figure>
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>arxiv.org</b>
+        <span class="note">论文摘要页</span>
+      </div>
+      <div class="stats">块 8（原文 4 / 译文 4 / 共享 0）</div>
+      <div class="title">Attention Is All You Need</div>
+      <div class="first">「View PDF HTML (experimental)」</div>
+    </figcaption>
+    <img src="design/站点抽查-arxiv.org-20261005-1309.png" alt="arxiv.org" loading="lazy">
+  </figure>
+  <figure class="card ok">
+    <figcaption>
+      <div class="head">
+        <span class="tag ok">正常</span>
+        <b>learn.microsoft.com</b>
+        <span class="note">降级到启发式</span>
+      </div>
+      <div class="stats">块 72（原文 36 / 译文 36 / 共享 0）</div>
+      <div class="title">C# docs - get started, tutorials, reference. - A tour of C#</div>
+      <div class="first">「C# documentation」</div>
+    </figcaption>
+    <img src="design/站点抽查-learn.microsoft.com-20261005-1309.png" alt="learn.microsoft.com" loading="lazy">
+  </figure>
+  <figure class="card bad">
+    <figcaption>
+      <div class="head">
+        <span class="tag bad">失败</span>
+        <b>bbc.com</b>
+        <span class="note">网络不通（问外）</span>
+      </div>
+      <div class="stats">抓取超时，网站响应太慢｜稍后再试，或换一个来源</div>
+      <div class="title">（没有取到标题）</div>
+      <div class="first">「」</div>
+    </figcaption>
+    <img src="design/站点抽查-bbc.com-20261005-1309.png" alt="bbc.com" loading="lazy">
+  </figure></div>
+</body></html>

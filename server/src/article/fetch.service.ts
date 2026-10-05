@@ -298,9 +298,15 @@ function mapNetworkError(err: NodeJS.ErrnoException): AppError {
       return new AppError('dns_failed');
     case 'ETIMEDOUT':
     case 'ESOCKETTIMEDOUT':
+      return new AppError('timeout');
+    // 连接被重置 / 半开断开 / 路由不可达 —— 这些**不是**"网站响应慢"。
+    // 实测 huggingface.co 只用了 73ms 就被重置，归成 timeout 的话
+    // 用户看到"网站响应太慢，稍后再试"，方向就完全错了。
     case 'ECONNRESET':
     case 'EPIPE':
-      return new AppError('timeout');
+    case 'ENETUNREACH':
+    case 'EHOSTUNREACH':
+      return new AppError('connection_reset');
     default:
       return new AppError('upstream_error');
   }

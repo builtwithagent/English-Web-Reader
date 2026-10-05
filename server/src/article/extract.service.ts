@@ -459,9 +459,31 @@ function findByTextDensity(root: Element | null): Element | null {
 function looksLikeSpa(doc: Document): boolean {
   const body = doc.body;
   if (!body) return false;
-  const textLen = clean(body.textContent).length;
-  const hasMountPoint = Boolean(doc.querySelector('#app, #root, #__next, [data-reactroot]'));
+  const textLen = visibleTextLength(body);
+  // 挂载点要认全：`<app-root>` 这种自定义元素（Angular）以前漏了，
+  // 于是 docs.nestjs.com 被笼统报成 extract_failed，而不是更准确的 js_rendered。
+  const hasMountPoint = Boolean(
+    doc.querySelector(
+      '#app, #root, #__next, #__nuxt, app-root, [data-reactroot], [ng-version]',
+    ),
+  );
   return hasMountPoint && textLen < 500;
+}
+
+/**
+ * **可见**文本长度。
+ *
+ * 不能直接用 `body.textContent` —— 它把 `<script>` / `<style>` 里的代码也算作文本，
+ * 一堆 SPA 外壳靠这个"骗"过了判定：实测 docs.nestjs.com 页面上几乎没有可见文字，
+ * 但正文里塞了 1851 字的 service-worker 代码，于是被判成"有内容"，
+ * 最后只能报笼统的 extract_failed，说不清到底为什么抓不到。
+ */
+function visibleTextLength(body: Element): number {
+  const clone = body.cloneNode(true) as Element;
+  for (const el of Array.from(clone.querySelectorAll('script, style, noscript, template'))) {
+    el.remove();
+  }
+  return clean(clone.textContent).length;
 }
 
 function firstNonEmpty(...values: Array<string | null | undefined>): string | null {

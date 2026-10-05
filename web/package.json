@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "shot": "node scripts/shot.mjs"
+    "shot": "node scripts/shot.mjs",
+    "shot:sites": "node scripts/shot-sites.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",

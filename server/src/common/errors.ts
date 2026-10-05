@@ -13,6 +13,7 @@ export type ErrorCode =
   | 'dns_failed'
   | 'blocked_target'
   | 'timeout'
+  | 'connection_reset'
   | 'blocked_by_site'
   | 'not_html'
   | 'size_limit'
@@ -58,6 +59,13 @@ export const ERROR_SPEC: Record<ErrorCode, ErrorSpec> = {
     status: 504,
     message: '抓取超时，网站响应太慢',
     hint: '稍后再试，或换一个来源',
+  },
+  // 和 timeout 分开：两者能拿到同样的失败结果，但性质完全相反。
+  // 实测被重置只要 73ms，报成"网站响应太慢"会把人误导去"再等等"。
+  connection_reset: {
+    status: 502,
+    message: '连接被中途断开，没能取到内容',
+    hint: '常见于网络环境对该站点的限制，或对方服务器主动断开',
   },
   blocked_by_site: {
     status: 502,
