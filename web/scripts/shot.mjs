@@ -178,6 +178,9 @@ async function capture(cdp, pageUrl, outFile) {
     notice: !!document.querySelector('.notice'),
     gridMode: document.querySelector('.grid')?.dataset.mode,
     title: document.querySelector('.art-head h1')?.textContent?.slice(0, 60),
+    // 第 1 行的**类型**是导语有没有丢的判据（见下面 checks 的注释）
+    firstType: document.querySelector('.cell[data-row="1"]')?.dataset.type,
+    firstText: document.querySelector('.cell[data-row="1"]')?.innerText?.trim().slice(0, 40),
   })`);
 
   // 对齐验证（技术方案 7.4）：同一行的原文块与译文块必须 top 相同、高度相同。
@@ -292,6 +295,11 @@ async function main() {
         degraded ? ['隐藏模式切换', m.modeSwitch === false] : ['显示模式切换', m.modeSwitch === true],
         degraded ? ['显示降级说明条', m.notice === true] : ['无说明条', m.notice === false],
         degraded ? ['单栏模式', m.gridMode === 'src'] : ['双栏模式', m.gridMode === 'both'],
+        // Readability 会把页面**导语**当 excerpt 摘走、并从正文里删掉 ——
+        // 补不回来的话文章开头就断了。导语一定是个段落，
+        // 所以"第 1 行是 p"能稳定看住这个回归，且不依赖具体文案。
+        // 后端 smoke.mjs 有同款断言，这里再在真实渲染上把一次。
+        ['首块是导语段落', m.firstType === 'p'],
         // 降级态没有译文列，对齐无从谈起
         ...(degraded
           ? []
@@ -304,6 +312,7 @@ async function main() {
       console.log(`\n${c.name}  →  ${path.basename(out)}`);
       console.log(`  标题：${m.title}`);
       console.log(`  块数 ${m.cells}（原文 ${m.src} / 译文 ${m.dst} / 共享 ${m.shared}）`);
+      console.log(`  首块 [${m.firstType ?? '无'}] ${m.firstText ?? ''}`);
       if (!degraded && (a.badTop || a.badH)) {
         console.log(`  对齐异常示例：${a.examples.join(' | ')}`);
       }

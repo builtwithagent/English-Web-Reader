@@ -162,6 +162,14 @@ async function main() {
       const sequential = ids.every((id, i) => id === i + 1);
       sequential ? ok('id 从 1 起连续递增') : fail('id 不连续', ids.slice(0, 8).join(','));
 
+      // Readability 会把页面**导语**当 excerpt 摘走、并从正文里删掉 ——
+      // 补不回来的话文章开头就断了（实际在 anthropic / MDN 上都踩到过）。
+      // 导语一定是个段落，所以"首块是 p"能稳定看住这个回归，且不依赖具体文案。
+      const first = blocks[0];
+      first?.type === 'p'
+        ? ok('首块是导语段落', `「${(first.text ?? '').slice(0, 36)}…」`)
+        : fail('首块不是导语段落', `type=${first?.type ?? '（无块）'}`);
+
       const badTranslatable = blocks.filter((b) => b.translatable && !(b.text || b.items?.length));
       badTranslatable.length === 0
         ? ok('translatable 块都有内容')

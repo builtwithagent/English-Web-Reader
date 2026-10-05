@@ -121,14 +121,20 @@ export class ExtractService {
     );
 
     // ---- L1: Readability ----
-    let blocks = this.tryReadability(html, sourceUrl);
+    const l1 = this.tryReadability(html, sourceUrl);
+    let blocks = l1.blocks;
     let level: ExtractLevel = 'readability';
+    // Readability 会把页面**导语**（`p.summary` / dek 这类）当成 excerpt 摘走、
+    // 并从正文 content 里删掉。只有它确实是页面上的一段可见文字时才捡回来；
+    // 若 excerpt 只是 <meta name="description">，那是给搜索引擎的摘要，混进正文反而是污染。
+    let excerpt = l1.excerpt && isExcerptVisibleText(doc, l1.excerpt) ? l1.excerpt : null;
     this.logger.debug(`L1 readability → ${translatableLength(blocks)} chars`);
 
     // ---- L2: 启发式容器 ----
     if (!isGoodEnough(blocks)) {
       blocks = this.tryHeuristic(doc);
       level = 'heuristic';
+      excerpt = null; // 这一级没用 Readability，excerpt 不再适用
       this.logger.debug(`L2 heuristic → ${translatableLength(blocks)} chars`);
     }
 
@@ -136,6 +142,7 @@ export class ExtractService {
     if (!isGoodEnough(blocks)) {
       blocks = this.tryBody(doc);
       level = 'body';
+      excerpt = null;
       this.logger.debug(`L3 body → ${translatableLength(blocks)} chars`);
     }
 
@@ -150,24 +157,35 @@ export class ExtractService {
       siteName: siteName ?? hostOf(sourceUrl) ?? '',
       htmlLang: htmlLang ?? null,
       extractLevel: level,
-      blocks,
+      blocks: prependExcerpt(blocks, excerpt),
     };
   }
 
-  /** L1：Readability。用克隆的文档，避免它改写原 doc 影响后续降级 */
-  private tryReadability(html: string, sourceUrl: string): Block[] {
+  /**
+   * L1：Readability。用克隆的文档，避免它改写原 doc 影响后续降级。
+   *
+   * 返回的 `excerpt` 是 Readability 从正文里**摘出去**的导语（它认为那是"摘要"），
+   * 对阅读器而言却是正文的一部分，所以一并带出来，由上层决定补不补回。
+   */
+  private tryReadability(
+    html: string,
+    sourceUrl: string,
+  ): { blocks: Block[]; excerpt: string | null } {
     try {
       const dom = new JSDOM(html, { url: sourceUrl });
       const clone = dom.window.document.cloneNode(true) as Document;
       const parsed = new Readability(clone, { charThreshold: MIN_ARTICLE_CHARS }).parse();
-      if (!parsed?.content) return [];
+      if (!parsed?.content) return { blocks: [], excerpt: null };
 
       const contentDom = new JSDOM(parsed.content, { url: sourceUrl });
       const body = contentDom.window.document.body;
-      return body ? buildBlocks(body, sourceUrl) : [];
+      return {
+        blocks: body ? buildBlocks(body, sourceUrl) : [],
+        excerpt: parsed.excerpt?.trim() || null,
+      };
     } catch (err) {
       this.logger.debug(`Readability 失败，降级：${(err as Error).message}`);
-      return [];
+      return { blocks: [], excerpt: null };
     }
   }
 
@@ -314,6 +332,55 @@ function buildBlocks(root: Element, baseUrl?: string): Block[] {
 
 function clean(text: string | null | undefined): string {
   return (text ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/** 比较用的归一化：忽略空白差异与大小写 */
+function normalizeForCompare(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * 判断 excerpt 是不是**页面上真实存在的一段可见文字**。
+ *
+ * Readability 的 excerpt 有两个来源：被它摘走的页面导语，和 `<meta name="description">`。
+ * 前者该补回正文，后者是给搜索引擎看的摘要 —— 补进去是污染而不是修复。
+ * 页面上真有这段字时，某一棵子树的 textContent 里就能找到它。
+ */
+function isExcerptVisibleText(doc: Document, excerpt: string): boolean {
+  const probe = normalizeForCompare(excerpt);
+  if (!probe) return false;
+  const head = probe.slice(0, 40);
+
+  for (const el of Array.from(doc.querySelectorAll('p, blockquote, div, section'))) {
+    const text = normalizeForCompare(el.textContent ?? '');
+    if (!text.includes(head)) continue;
+    // 只认"文本量级和 excerpt 相当"的元素，否则匹配到的是包住整篇的容器
+    if (text.length <= probe.length * 2 + 200) return true;
+  }
+  return false;
+}
+
+/**
+ * 把被 Readability 摘走、又从正文里删掉的导语补回正文最前面。
+ *
+ * 顺带去重：万一这段本来就还在正文里（不同站点行为不一），不要再加一遍。
+ * 补回时所有块的 id 要整体后移 —— 前端按 id 做左右对齐，契约必须保持从 1 起连续。
+ */
+function prependExcerpt(blocks: Block[], excerpt: string | null): Block[] {
+  if (!excerpt) return blocks;
+
+  const probe = normalizeForCompare(excerpt).slice(0, 60);
+  if (!probe) return blocks;
+
+  const alreadyThere = blocks.some((b) =>
+    normalizeForCompare(b.text ?? (b.items ?? []).join(' ')).includes(probe),
+  );
+  if (alreadyThere) return blocks;
+
+  return [
+    { id: 1, type: 'p', text: excerpt, translatable: true },
+    ...blocks.map((b) => ({ ...b, id: b.id + 1 })),
+  ];
 }
 
 /**
