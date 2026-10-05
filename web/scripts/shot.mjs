@@ -39,6 +39,13 @@ const MDN = 'https://developer.mozilla.org';
 const CASES = [
   { name: '英文双栏', url: `${MDN}/en-US/docs/Web/JavaScript/Guide/Introduction` },
   { name: '中文降级单栏', url: `${MDN}/zh-CN/docs/Web/JavaScript/Guide/Introduction` },
+  // 这篇有 4 张插图（架构图 / 表格图），是"跨栏块会不会被中缝竖线劈开"的现场。
+  // 截图定格到第一张图上 —— 否则图在首屏之外，截出来什么都看不到。
+  {
+    name: '图片跨栏',
+    url: 'https://www.anthropic.com/engineering/managed-agents',
+    focus: '.col-shared[data-type="img"]',
+  },
 ];
 
 function stamp() {
@@ -142,7 +149,7 @@ async function waitUntil(cdp, expression, timeoutMs = 30000) {
   return false;
 }
 
-async function capture(cdp, pageUrl, outFile) {
+async function capture(cdp, pageUrl, outFile, focus) {
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     width: VIEWPORT.width,
     height: VIEWPORT.height,
@@ -158,6 +165,23 @@ async function capture(cdp, pageUrl, outFile) {
   if (!ok) {
     const errText = await cdp.eval(`document.body.innerText.slice(0, 300)`);
     return { ok: false, detail: errText };
+  }
+
+  // `focus` = 要定格进画面的元素。文章里的插图往往在首屏之外，
+  // 不滚过去的话截图里根本没有图，"跨栏块有没有被竖线劈开"就无从判断。
+  // 滚动不影响上面那些断言：它们查的是 DOM 与相对位置，跟视口无关。
+  if (focus) {
+    await cdp.eval(`document.querySelector('${focus}')?.scrollIntoView({ block: 'center' })`);
+    // 图片是 loading="lazy"，滚进视野才开始加载 —— 等它真的解码完再截
+    await waitUntil(
+      cdp,
+      `(() => {
+         const img = document.querySelector('${focus}')?.querySelector('img');
+         return !!img && img.complete && img.naturalWidth > 0;
+       })()`,
+      15000,
+    );
+    await new Promise((r) => setTimeout(r, 300));
   }
 
   // 再给图片一点时间（不阻塞太久，图挂了也不影响判断布局）
@@ -212,7 +236,31 @@ async function capture(cdp, pageUrl, outFile) {
     return { pairs, badTop, badH, examples };
   })())`);
 
-  return { ok: true, meta: JSON.parse(meta), align: JSON.parse(align) };
+  // 跨栏块（图片 / 代码）必须盖住中缝那条竖线（见 index.css 里 .cell.col-shared 的注释）。
+  // 竖线是 .pane-divider::after，绝对定位、left:50%；网格无 padding/border，
+  // 所以它的 x 就是网格宽度的一半。三条判据缺一不可：
+  // 横向要盖过中缝、底色要不透明、层级要高于竖线 —— 少任何一条线都会重新压到图上。
+  const sharedMask = await cdp.eval(`JSON.stringify((() => {
+    const grid = document.querySelector('.grid');
+    if (!grid) return { total: 0, bad: [], kinds: [] };
+    const gr = grid.getBoundingClientRect();
+    const midX = gr.left + gr.width / 2;
+    const cells = [...document.querySelectorAll('.cell.col-shared')];
+    const bad = [];
+    const kinds = [];
+    for (const el of cells) {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const kind = el.dataset.type;
+      kinds.push(kind);
+      if (!(r.left <= midX && midX <= r.right)) { bad.push(kind + ' 未跨过中缝'); continue; }
+      if (!/^rgb\\(/.test(cs.backgroundColor)) { bad.push(kind + ' 底色透明(' + cs.backgroundColor + ')'); continue; }
+      if (!(parseInt(cs.zIndex, 10) > 0)) { bad.push(kind + ' 层级不高于竖线(z=' + cs.zIndex + ')'); }
+    }
+    return { total: cells.length, bad, kinds };
+  })())`);
+
+  return { ok: true, meta: JSON.parse(meta), align: JSON.parse(align), sharedMask: JSON.parse(sharedMask) };
 }
 
 async function main() {
@@ -277,7 +325,7 @@ async function main() {
     for (const c of CASES) {
       const out = path.join(outDir, `实现预览-${c.name}-${ts}.png`);
       const pageUrl = `${SITE}/?url=${encodeURIComponent(c.url)}`;
-      const result = await capture(chrome.cdp, pageUrl, out);
+      const result = await capture(chrome.cdp, pageUrl, out, c.focus);
 
       if (!result.ok) {
         console.log(`✗ ${c.name}：没等到阅读态。页面当时显示：${result.detail}`);
@@ -287,6 +335,7 @@ async function main() {
 
       const m = result.meta;
       const a = result.align;
+      const s = result.sharedMask;
       const degraded = c.name.includes('降级');
       const checks = [
         ['语言选项 10 项', m.langs === 10],
@@ -306,6 +355,11 @@ async function main() {
           : [
               [`左右同行顶部对齐（${a.pairs} 对）`, a.badTop === 0],
               [`左右同行高度一致（${a.pairs} 对）`, a.badH === 0],
+              // 单栏模式下 ::after 被 display:none 掉了，这条只在双栏时有意义
+              [
+                `跨栏块盖住中缝竖线（${s.total} 个：${[...new Set(s.kinds)].join('/') || '无'}）`,
+                s.bad.length === 0,
+              ],
             ]),
       ];
 
@@ -315,6 +369,9 @@ async function main() {
       console.log(`  首块 [${m.firstType ?? '无'}] ${m.firstText ?? ''}`);
       if (!degraded && (a.badTop || a.badH)) {
         console.log(`  对齐异常示例：${a.examples.join(' | ')}`);
+      }
+      if (!degraded && s.bad.length) {
+        console.log(`  中缝异常：${s.bad.slice(0, 4).join(' | ')}`);
       }
       for (const [label, pass] of checks) {
         console.log(`  ${pass ? '✓' : '✗'} ${label}`);

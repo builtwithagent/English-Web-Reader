@@ -323,8 +323,22 @@ html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: 
 /* 不参与翻译的块（代码 / 图片）不属于任何一栏：
    它们没有"原文/译文"之分，所以两侧共用一份，跨整行显示。
    设计稿把它们放在 src 侧、再把 dst 侧 display:none —— 那样在"仅译文"模式下
-   会因为 .col-src 被整体隐藏而让代码块凭空消失。用共享栏就没这个坑。 */
-.cell.col-shared { grid-column: 1 / -1; }
+   会因为 .col-src 被整体隐藏而让代码块凭空消失。用共享栏就没这个坑。
+
+   但光有 grid-column 还不够：中缝那条竖线是 .pane-divider::after，
+   它是**绝对定位**的，绘制顺序排在网格项之后 —— 于是它会直接压在跨栏块上，
+   把一篇页面的插图从正中间劈成两半（实测在 anthropic 的架构图上非常显眼）。
+   所以这里要让跨栏块抬到竖线之上，并用页面底色把自己这一段竖线遮掉。
+   语义上也对：这个块既不属于原文栏也不属于译文栏，线本来就不该从它身上穿过去。 */
+.cell.col-shared {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;          /* 高于 .pane-divider::after（z-index:auto，绘制在同一层的更前） */
+  background: var(--bg); /* 必须不透明，遮罩才生效；--bg 就是它背后的页面底色 */
+}
+/* 共享块自己也要能高亮 —— 上面那条 background 与 .cell.hl 同权重，
+   不重新声明的话会把 hover 效果覆盖掉 */
+.cell.col-shared.hl { background: var(--hover); }
 
 /* 不翻译标记 */
 .skip .badge {
