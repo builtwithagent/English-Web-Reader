@@ -15,7 +15,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -318,6 +318,13 @@ async function main() {
 
     console.log('启动无头 Chrome（CDP）…');
     chrome = await launchChrome();
+
+    // 每跑一次就丢一批图，不做清理的话这个目录会一版一版堆下去。
+    // 文件名仍带时间戳（避免"看着是新的其实是缓存"），只是开跑前把上一批删掉，
+    // 于是目录里永远只有最新一版。删除范围严格限定在本脚本自己的产物前缀上。
+    const stale = readdirSync(outDir).filter((f) => f.startsWith('实现预览-') && f.endsWith('.png'));
+    for (const f of stale) rmSync(path.join(outDir, f));
+    if (stale.length) console.log(`清掉上一批预览图 ${stale.length} 张`);
 
     const ts = stamp();
     let failed = 0;
