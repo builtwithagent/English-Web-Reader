@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英文网页阅读器 · 设计稿</title>
+<style>
+  /* ============ 主题变量 ============ */
+  :root {
+    --bg:          #ffffff;
+    --bg-subtle:   #f6f8fa;
+    --bg-elev:     #ffffff;
+    --text:        #1f2328;
+    --text-soft:   #57606a;
+    --text-muted:  #8c959f;
+    --border:      #d8dee4;
+    --border-soft: #eaeef2;
+    --accent:      #4338ca;
+    --accent-soft: #eef2ff;
+    --accent-line: #c7d2fe;
+    --hover:       #f6f8fa;
+    --shadow:      0 1px 3px rgba(27,31,36,.06), 0 8px 24px rgba(27,31,36,.06);
+    --reading-font-size: 17px;
+    --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --mono-font: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  html[data-theme="dark"] {
+    --bg:          #0d1117;
+    --bg-subtle:   #161b22;
+    --bg-elev:     #161b22;
+    --text:        #e6edf3;
+    --text-soft:   #b1bac4;
+    --text-muted:  #7d8590;
+    --border:      #30363d;
+    --border-soft: #21262d;
+    --accent:      #818cf8;
+    --accent-soft: #1c2333;
+    --accent-line: #3730a3;
+    --hover:       #161b22;
+    --shadow:      0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ui-font);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background .18s ease, color .18s ease;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  select { font-family: inherit; cursor: pointer; }
+
+  /* ============ 顶栏 ============ */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; gap: 16px;
+    height: 56px; padding: 0 24px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
+  .brand .mark {
+    width: 24px; height: 24px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #22d3ee));
+    display: grid; place-items: center; color: #fff; font-size: 13px;
+  }
+  .topbar .spacer { flex: 1; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 11px;
+    background: var(--bg-elev); color: var(--text-soft);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-weight: 500; white-space: nowrap;
+    transition: background .14s, border-color .14s, color .14s;
+  }
+  .btn:hover { background: var(--hover); color: var(--text); }
+  .btn.icon { width: 32px; padding: 0; justify-content: center; }
+  .btn.primary {
+    background: var(--accent); color: #fff; border-color: transparent;
+  }
+  .btn.primary:hover { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
+  .btn.ghost { background: transparent; border-color: transparent; }
+  .btn.ghost:hover { background: var(--hover); }
+  .btn[disabled] { opacity: .4; pointer-events: none; }
+
+  .select {
+    height: 32px; padding: 0 8px; font-size: 13px;
+    background: var(--bg-elev); color: var(--text-soft);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+
+  /* 语言对：源语言锁英文（垂直定位的体现），译文语言可选 10 种 */
+  .lang-pair {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 30px; padding: 0 9px 0 12px;
+    background: var(--accent-soft); border: 1px solid var(--accent-line);
+    border-radius: 999px;
+    font-size: 12px; color: var(--accent); letter-spacing: .01em;
+  }
+  .lang-pair b { font-weight: 650; }
+  .lang-pair i { font-style: normal; opacity: .55; }
+  .lang-pair select {
+    appearance: none; -webkit-appearance: none;
+    background: transparent; border: none; outline: none; padding: 0;
+    color: var(--accent); font-family: inherit; font-size: 12px;
+    font-weight: 650; cursor: pointer; max-width: 112px;
+  }
+  .lang-pair .caret { font-size: 9px; opacity: .6; }
+  html[data-theme="dark"] .lang-pair select option { background: #161b22; color: #e6edf3; }
+
+  /* ============ 初始态 ============ */
+  .landing {
+    max-width: 640px; margin: 0 auto;
+    padding: 15vh 24px 80px;
+    text-align: center;
+  }
+  /* 删掉大标题后，这行成了首屏唯一的文字 → 直接承担标题的角色：字号大、加粗 */
+  .landing .sub {
+    color: var(--text-soft); font-size: 21px; font-weight: 600;
+    letter-spacing: -.012em; line-height: 1.5;
+    margin: 0 0 28px;
+  }
+  .url-box {
+    display: flex; gap: 8px; padding: 7px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow);
+    transition: border-color .15s;
+  }
+  .url-box:focus-within { border-color: var(--accent); }
+  .url-box input {
+    flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+    font-size: 14px; color: var(--text); padding: 9px 10px;
+    font-family: var(--ui-font);
+  }
+  .url-box input::placeholder { color: var(--text-muted); }
+  .url-box .btn.primary { height: 38px; padding: 0 20px; border-radius: 10px; font-size: 14px; }
+
+  /* ============ 阅读态：输入条 + 控制条 ============ */
+  .reading-chrome {
+    position: sticky; top: 56px; z-index: 25;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .chrome-inner {
+    max-width: 1180px; margin: 0 auto; padding: 9px 24px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mini-url {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 10px;
+    background: var(--bg-subtle); border: 1px solid transparent; border-radius: 9px;
+    color: var(--text-soft); font-size: 13px;
+    overflow: hidden; white-space: nowrap;
+  }
+  .mini-url .u { overflow: hidden; text-overflow: ellipsis; }
+  .mini-url .lock { color: var(--text-muted); font-size: 11px; flex: none; }
+
+  /* 控制条 */
+  .controls {
+    max-width: 1180px; margin: 0 auto; padding: 10px 24px 0;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .segmented {
+    display: inline-flex; padding: 2px; gap: 2px;
+    background: var(--bg-subtle); border: 1px solid var(--border-soft); border-radius: 9px;
+  }
+  .segmented button {
+    height: 27px; padding: 0 12px; border: none; border-radius: 7px;
+    background: transparent; color: var(--text-muted); font-size: 12.5px; font-weight: 500;
+    transition: background .14s, color .14s;
+  }
+  .segmented button:hover { color: var(--text); }
+  .segmented button.on {
+    background: var(--bg-elev); color: var(--text);
+    box-shadow: 0 1px 2px rgba(27,31,36,.08);
+  }
+  html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: none; }
+  .zs-group { display: inline-flex; align-items: center; gap: 2px; }
+  .zs-val { min-width: 38px; text-align: center; font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .controls .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  /* 非英文页面的降级说明条 */
+  .notice { max-width: 1180px; margin: 0 auto; padding: 10px 24px 2px; }
+  .notice .box {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 13px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    font-size: 12.5px; color: var(--text-soft);
+  }
+  .notice .ic {
+    flex: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 10.5px; font-weight: 700;
+  }
+  .notice button {
+    margin-left: auto; flex: none;
+    background: none; border: none; padding: 0;
+    color: var(--accent); font-size: 12.5px; font-weight: 600;
+    font-family: inherit; cursor: pointer; white-space: nowrap;
+  }
+  .notice button:hover { text-decoration: underline; }
+
+  /* 降级态：单栏 + 隐藏模式切换 + 整篇收窄让标题与正文对齐 */
+  #reader[data-lang="non-en"] #modeSeg { display: none; }
+  #reader[data-lang="non-en"] .article { max-width: 768px; }
+  /* 单栏模式不需要中间的分隔线 */
+  .grid[data-mode="src"]::after,
+  .grid[data-mode="dst"]::after { display: none; }
+
+  /* ============ 文章 ============ */
+  .article { max-width: 1180px; margin: 0 auto; padding: 26px 24px 96px; }
+
+  .art-head { padding-bottom: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--border-soft); }
+  .art-head h1 {
+    font-size: calc(var(--reading-font-size) * 1.72);
+    line-height: 1.25; font-weight: 700; letter-spacing: -.022em;
+    margin: 0 0 8px; overflow-wrap: break-word;
+  }
+  .art-head .trans-title {
+    font-size: calc(var(--reading-font-size) * 1.16);
+    line-height: 1.35; font-weight: 600; letter-spacing: -.012em;
+    color: var(--text-soft); margin: 0 0 14px;
+  }
+  .art-meta {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 12.5px; color: var(--text-muted);
+  }
+  .art-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+  .art-meta .tag {
+    padding: 2px 8px; border: 1px solid var(--border-soft); border-radius: 999px;
+    background: var(--bg-subtle);
+  }
+  .art-meta .tag.ok { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+
+  /* 单栏模式时文章头部同步切换语言 */
+  #reader[data-mode="dst"] #artTitleEn { display: none; }
+  #reader[data-mode="dst"] .trans-title {
+    font-size: calc(var(--reading-font-size) * 1.72);
+    color: var(--text); margin-bottom: 14px; letter-spacing: -.022em;
+  }
+  #reader[data-mode="src"] .trans-title { display: none; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; row-gap: 0; }
+  .grid > * { min-width: 0; }
+  .sk-col { min-width: 0; }
+  .pane-divider { position: relative; }
+  .pane-divider::after {
+    content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 1px; background: var(--border);
+  }
+
+  /* min-width:0 是关键：grid 的 1fr 轨道默认最小宽度是 min-content，
+     代码块（white-space:pre）会把轨道撑宽，进而让整个容器横向溢出 */
+  .cell { min-width: 0; padding: 9px 12px; margin: 0 -12px; border-radius: 8px; transition: background .12s; }
+  .cell:hover { background: var(--hover); }
+  .cell .txt { font-size: var(--reading-font-size); line-height: 1.72; overflow-wrap: break-word; }
+  .col-src .txt { color: var(--text-soft); }
+  .col-dst .txt { color: var(--text); }
+
+  .cell[data-type="h2"] .txt,
+  .cell[data-type="h3"] .txt { font-weight: 650; letter-spacing: -.015em; }
+  .cell[data-type="h2"] { padding-top: 22px; padding-bottom: 4px; }
+  .cell[data-type="h2"] .txt { font-size: calc(var(--reading-font-size) * 1.28); line-height: 1.35; }
+  .cell[data-type="h3"] { padding-top: 14px; padding-bottom: 2px; }
+  .cell[data-type="h3"] .txt { font-size: calc(var(--reading-font-size) * 1.1); line-height: 1.4; }
+
+  .cell[data-type="p"] { padding-top: 9px; padding-bottom: 9px; }
+
+  .cell[data-type="blockquote"] .txt {
+    padding-left: 15px; border-left: 3px solid var(--accent-line);
+    font-style: italic; color: var(--text-soft);
+  }
+  .col-dst .cell[data-type="blockquote"] .txt { border-left-color: var(--accent); }
+
+  .cell[data-type="pre"] { padding-top: 6px; padding-bottom: 6px; }
+  /* 代码块不翻译 → 跨两栏显示同一份代码 */
+  .cell[data-type="pre"].col-src { grid-column: 1 / -1; }
+  .cell[data-type="pre"].col-dst { display: none; }
+  .cell[data-type="pre"] .txt {
+    font-family: var(--mono-font); font-size: calc(var(--reading-font-size) * .84);
+    line-height: 1.62; background: var(--bg-subtle);
+    border: 1px solid var(--border-soft); border-radius: 9px;
+    padding: 13px 15px; overflow-x: auto; white-space: pre; color: var(--text);
+  }
+  .cell[data-type="pre"] .badge {
+    display: inline-block; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 6px; font-family: var(--ui-font);
+  }
+
+  .cell[data-type="ul"] .txt { padding-left: 2px; }
+  .cell[data-type="ul"] .txt li { margin: 6px 0; padding-left: 4px; }
+  .cell[data-type="ul"] .txt ul { margin: 0; padding-left: 20px; }
+
+  /* 不翻译标记 */
+  .skip .badge { color: var(--text-muted); }
+
+  /* 单栏模式 */
+  .grid[data-mode="dst"] { grid-template-columns: 1fr; max-width: 720px; margin: 0 auto; }
+  .grid[data-mode="dst"] .col-src { display: none; }
+  .grid[data-mode="src"] { grid-template-columns: 1fr; max-width: 720px; margin: 0 auto; }
+  .grid[data-mode="src"] .col-dst { display: none; }
+  .grid[data-mode="src"] .col-src .txt { color: var(--text); }
+
+  /* 空译状态 */
+  .pending { color: var(--text-muted); }
+  .cursor::after {
+    content: ""; display: inline-block; width: 7px; height: 1.05em;
+    background: var(--accent); vertical-align: -2px; margin-left: 3px;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ============ 加载骨架 ============ */
+  .skeleton { max-width: 1180px; margin: 0 auto; padding: 34px 24px; }
+  .sk-line {
+    height: 14px; border-radius: 6px; margin-bottom: 13px;
+    background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border-soft) 37%, var(--bg-subtle) 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.3s ease-in-out infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  .sk-title { height: 30px; width: 62%; margin-bottom: 20px; }
+  .sk-cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
+  .sk-col:nth-child(2) .sk-line { opacity: .62; }
+
+  /* ============ Toast ============ */
+  .toast-wrap {
+    position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: center;
+    pointer-events: none;
+  }
+  .toast {
+    padding: 10px 16px; border-radius: 10px;
+    background: var(--text); color: var(--bg);
+    font-size: 13px; font-weight: 500; box-shadow: var(--shadow);
+    animation: rise .22s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+  /* ============ 设计稿标注 ============ */
+  .spec-note {
+    max-width: 1180px; margin: 0 auto 40px; padding: 0 24px;
+  }
+  .spec-note .box {
+    border: 1px dashed var(--border); border-radius: 12px;
+    background: var(--bg-subtle);
+    padding: 14px 16px; font-size: 12.5px; color: var(--text-muted); line-height: 1.75;
+  }
+  .spec-note .box b { color: var(--text-soft); font-weight: 600; }
+  .spec-note .box code {
+    font-family: var(--mono-font); font-size: 11.5px;
+    background: var(--bg-elev); border: 1px solid var(--border-soft);
+    border-radius: 4px; padding: 1px 5px; color: var(--text-soft);
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 900px) {
+    .grid, .sk-cols { grid-template-columns: 1fr; column-gap: 0; }
+    .pane-divider::after { display: none; }
+    /* 上下堆叠时，译文块用左侧色条区分 */
+    .col-dst {
+      margin: 4px 0 4px 0;
+      border-left: 2px solid var(--accent-line);
+      border-radius: 0 8px 8px 0;
+      padding-left: 14px;
+    }
+    .landing { padding-top: 8vh; }
+    .topbar { padding: 0 16px; }
+    .article { padding-left: 16px; padding-right: 16px; }
+    .controls { padding-left: 16px; padding-right: 16px; }
+    .chrome-inner { padding-left: 16px; padding-right: 16px; }
+  }
+  @media (max-width: 620px) {
+    .topbar { height: 52px; gap: 10px; }
+    .reading-chrome { top: 52px; }
+    .brand span:last-child { display: none; }
+    #btnExport { display: none; }
+    .controls .right { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= 顶栏 ================= -->
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">📖</span>
+    <span>英文网页阅读器</span>
+  </div>
+  <div class="spacer"></div>
+
+  <label class="lang-pair" title="源语言固定英文，可选择译文语言">
+    <b>EN</b><i>→</i>
+    <select id="langSelect">
+      <option value="zh-Hans" selected>简体中文</option>
+      <option value="zh-Hant">繁體中文</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="es">Español</option>
+      <option value="pt">Português</option>
+      <option value="it">Italiano</option>
+      <option value="ru">Русский</option>
+    </select>
+    <span class="caret">▾</span>
+  </label>
+
+  <button class="btn" id="btnFav">☆ 收藏</button>
+  <button class="btn" id="btnExport">导出</button>
+  <button class="btn icon" id="btnTheme" title="深浅色">☾</button>
+</header>
+
+<!-- ================= 初始态 ================= -->
+<section class="landing" id="landing">
+  <p class="sub">粘贴一个公开的英文网页链接</p>
+
+  <div class="url-box">
+    <input type="text" id="urlInput"
+           value="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+           placeholder="example.com/post  或  https://example.com/post">
+    <button class="btn primary" id="btnRead">开始阅读</button>
+  </div>
+</section>
+
+<!-- ================= 加载骨架 ================= -->
+<section class="skeleton hidden" id="skeleton">
+  <div class="sk-line sk-title"></div>
+  <div class="sk-cols">
+    <div class="sk-col">
+      <div class="sk-line" style="width:96%"></div>
+      <div class="sk-line" style="width:88%"></div>
+      <div class="sk-line" style="width:92%"></div>
+      <div class="sk-line" style="width:70%"></div>
+      <div class="sk-line" style="width:94%; margin-top:26px"></div>
+      <div class="sk-line" style="width:86%"></div>
+      <div class="sk-line" style="width:60%"></div>
+    </div>
+    <div class="sk-col">
+      <div class="sk-line" style="width:94%"></div>
+      <div class="sk-line" style="width:90%"></div>
+      <div class="sk-line" style="width:96%"></div>
+      <div class="sk-line" style="width:66%"></div>
+      <div class="sk-line" style="width:92%; margin-top:26px"></div>
+      <div class="sk-line" style="width:88%"></div>
+      <div class="sk-line" style="width:72%"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 阅读态 ================= -->
+<div id="reader" class="hidden" data-mode="both">
+
+  <div class="reading-chrome">
+    <div class="chrome-inner">
+      <div class="mini-url">
+        <span class="lock">🔒</span>
+        <span class="u" id="miniUrl">https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents</span>
+      </div>
+      <button class="btn" id="btnReRead">换一篇</button>
+    </div>
+
+    <div class="controls">
+      <div class="segmented" id="modeSeg">
+        <button data-mode="both" class="on">双语对照</button>
+        <button data-mode="dst">仅译文</button>
+        <button data-mode="src">仅原文</button>
+      </div>
+
+      <div class="zs-group">
+        <button class="btn icon" id="btnMinus" title="缩小字号">A-</button>
+        <span class="zs-val" id="zsVal">17</span>
+        <button class="btn icon" id="btnPlus" title="放大字号">A+</button>
+      </div>
+
+      <div class="right">
+        <span style="font-size:12.5px;color:var(--text-muted)" id="progress">翻译中 8 / 12</span>
+      </div>
+    </div>
+    <div class="notice hidden" id="langNotice">
+      <div class="box">
+        <span class="ic">!</span>
+        <span id="noticeText">这不是英文网页，仅显示原文</span>
+        <button id="btnForceTrans">仍要翻译</button>
+      </div>
+    </div>
+  </div>
+
+  <article class="article">
+    <div class="art-head">
+      <h1 id="artTitleEn">Effective Context Engineering for AI Agents</h1>
+      <p class="trans-title" id="artTitleZh">面向 AI 智能体的有效上下文工程</p>
+      <div class="art-meta">
+        <span id="artSite">Anthropic · Engineering</span>
+        <span class="dot"></span>
+        <span>2025-09-29</span>
+        <span class="dot"></span>
+        <span class="tag ok">Readability 提取</span>
+        <span class="dot"></span>
+        <span class="tag" id="langTag">EN → 中文</span>
+      </div>
+    </div>
+
+    <div class="grid pane-divider" id="grid" data-mode="both">
+      <!-- 由 JS 渲染 -->
+    </div>
+  </article>
+</div>
+
+<!-- ================= 设计稿说明 ================= -->
+<section class="spec-note" id="specNote">
+  <div class="box">
+    <b>设计稿说明（非最终产品）</b>　文章内容为示意用的技术段落，不是真实抓取结果；翻译由本地写死的中文模拟。
+    <br><b>可点的地方</b>：<b>开始阅读</b>（走一遍加载骨架 → 阅读态）、<b>EN → 语言</b>（切换译文语言，会记住）、
+    <b>双语对照 / 仅译文 / 仅原文</b>、<b>A- / A+</b> 字号（会记住）、<b>深浅色</b>（会记住）、
+    <b>收藏</b>（未登录提示）、<b>导出</b>、<b>悬停某一整行</b>（左右同时高亮）。
+    <br><b>调试参数</b>：<code>?view=reading</code> 直达阅读态、<code>&nofx=1</code> 跳过动画、
+    <code>&theme=dark</code> 深色、<code>&pagelang=ja</code> 模拟<b>非英文网页</b>（降级为单栏原文，不翻译）、
+    <code>&diag=1</code> 布局自检。
+  </div>
+</section>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ============ 设计稿调试参数 ============ */
+const QS = new URLSearchParams(location.search);
+const NOFX = QS.get("nofx") === "1";
+/* 页面语言：真实实现里由后端判定后随 /api/article 返回（见技术方案 4.7）。
+   设计稿用 ?pagelang=ja 模拟"粘进了一个非英文网页"。*/
+const PAGE_LANG = QS.get("pagelang") || "en";
+const NON_EN = PAGE_LANG !== "en";
+
+const LANG_NAMES = {
+  "zh-Hans": "简体中文", "zh-Hant": "繁體中文",
+  "ja": "日本語", "ko": "한국어",
+  "fr": "Français", "de": "Deutsch", "es": "Español",
+  "pt": "Português", "it": "Italiano", "ru": "Русский"
+};
+
+/* ============ 示例数据（示意内容） ============ */
+const BLOCKS = [
+  { type: "p", src: "Context is not free. Every token you add to the prompt competes for the model's finite attention, and irrelevant context actively degrades output quality. Treating the context window as a storage bin rather than a budget is the single most common mistake in agent design.",
+    dst: "上下文不是免费的。你往提示词里加的每一个 token，都在争夺模型有限的注意力，而无关的上下文会主动拉低输出质量。把上下文窗口当成储物箱而不是一份预算，是智能体设计中最常见的错误。" },
+
+  { type: "h2", src: "Retrieval Is Not Enough", dst: "光有检索还不够" },
+
+  { type: "p", src: "Most teams stop at vector search. They embed documents, retrieve the top-k chunks, and paste them straight into the prompt. This works right up until it doesn't: the retrieved chunks are frequently redundant, partially overlapping, or framed at the wrong level of abstraction for the question actually being asked.",
+    dst: "多数团队做到向量检索就停了。他们把文档向量化，召回 top-k 分块，直接塞进提示词。这个做法在失效之前一直好用：召回的分块往往互相重复、部分重叠，或者抽象层级与真正被问到的问题对不上。" },
+
+  { type: "p", src: "The fix is rarely a better embedding model. It is usually a restructuring step — deduplicate, resolve conflicts between sources, and rewrite each surviving chunk into a form that answers a question rather than merely being related to a topic.",
+    dst: "解决办法很少是换一个更好的嵌入模型，通常是一个重构步骤：去重、消解来源之间的冲突，然后把存活下来的每个分块改写成能回答某个问题的形式，而不只是与某个话题相关。" },
+
+  { type: "blockquote", src: "If a chunk cannot be traced back to a decision the agent needs to make, it is decoration, not context.",
+    dst: "如果一个分块无法回溯到智能体需要做出的某个决策，那它就是装饰，不是上下文。" },
+
+  { type: "h3", src: "Compaction Over Truncation", dst: "压缩优于截断" },
+
+  { type: "p", src: "When a conversation exceeds the window, truncation throws away the oldest tokens first. That is exactly backwards. The system prompt and the original task statement are usually the most load-bearing parts of the entire prompt, and they are almost always the first things to go.",
+    dst: "当对话超出窗口时，截断会最先丢弃最旧的 token。这恰恰搞反了。系统提示词和最初的任务描述，通常才是整个提示词里承重最大的部分，而它们几乎总是最先被丢掉的那部分。" },
+
+  { type: "pre", lang: "ts", src: "// Compaction keeps decisions, drops pleasantries\nconst summary = await compact(messages, {\n  keep: [\"task\", \"decisions\", \"open_questions\"],\n  drop: [\"greetings\", \"restated_context\"],\n  targetTokens: 800,\n});",
+    dst: null },
+
+  { type: "ul", src: ["Summarize tool outputs, not tool calls", "Pin the original task statement at the end, not the beginning", "Measure recall, not token count"],
+    dst: ["总结工具的输出，而不是工具调用本身", "把最初的任务描述钉在末尾，而不是开头", "衡量召回率，而不是 token 数"] },
+
+  { type: "p", src: "None of this requires a larger model. It requires treating the context window as a resource with an owner, a budget, and an audit trail — which is an engineering discipline, not a model capability.",
+    dst: "这些都不需要更大的模型。它需要的是把上下文窗口当成一种有归属、有预算、有审计记录的资源来对待——这是一门工程纪律，而不是模型能力。" }
+];
+
+/* 非英文页面的示例内容（日语）—— 只用于演示降级态：不翻译，只显示单栏原文 */
+const JP_ARTICLE = {
+  title: "コンテキストエンジニアリングの実践",
+  blocks: [
+    { type: "p", src: "大規模言語モデルを使ったエージェント設計では、プロンプトに何を入れるかよりも、何を入れないかを決めるほうが難しい。" },
+    { type: "h2", src: "検索だけでは足りない" },
+    { type: "p", src: "多くのチームはベクトル検索で止まってしまう。文書を埋め込み、上位の断片を取り出し、そのままプロンプトに貼り付ける。取り出した断片はしばしば重複しており、抽象度も問いと噛み合っていない。" },
+    { type: "blockquote", src: "判断につながらない情報は、コンテキストではなく装飾である。" },
+    { type: "p", src: "必要なのは大きなモデルではない。コンテキストを予算として扱う設計態度である。" }
+  ]
+};
+
+/* ============ 渲染 ============ */
+const grid = document.getElementById("grid");
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function cellHTML(side, b, i) {
+  const cls = "cell col-" + side + (b.dst === null ? " skip" : "");
+  let inner = "";
+
+  if (b.type === "pre") {
+    inner = '<div class="badge">' + esc(b.lang || "code") + (b.dst === null ? " · 不翻译" : "") + "</div>"
+          + "<div class='txt'>" + esc(b.src) + "</div>";
+  } else if (b.type === "ul") {
+    const items = (side === "src" ? b.src : b.dst).map(t => "<li>" + esc(t) + "</li>").join("");
+    inner = "<div class='txt'><ul>" + items + "</ul></div>";
+  } else {
+    const t = side === "src" ? b.src : b.dst;
+    inner = "<div class='txt'>" + (t === null ? "" : esc(t)) + "</div>";
+  }
+
+  return '<div class="' + cls + '" data-type="' + b.type + '" data-row="' + i + '">' + inner + "</div>";
+}
+
+function renderAll() {
+  const blocks = NON_EN ? JP_ARTICLE.blocks : BLOCKS;
+  let html = "";
+  blocks.forEach((b, i) => {
+    html += cellHTML("src", b, i);
+    if (!NON_EN) html += cellHTML("dst", b, i);   // 降级态：译文列的 DOM 根本不生成
+  });
+  grid.innerHTML = html;
+  grid.dataset.mode = NON_EN ? "src" : "both";
+  bindHover();
+  if (!NON_EN) runTranslateSim();
+}
+
+/* 悬停联动：同一行两侧同时高亮 */
+function bindHover() {
+  grid.querySelectorAll(".cell").forEach(el => {
+    el.addEventListener("mouseenter", () => {
+      const r = el.dataset.row;
+      grid.querySelectorAll('[data-row="' + r + '"]').forEach(x => x.style.background = "var(--hover)");
+    });
+    el.addEventListener("mouseleave", () => {
+      const r = el.dataset.row;
+      grid.querySelectorAll('[data-row="' + r + '"]').forEach(x => x.style.background = "");
+    });
+  });
+}
+
+/* 模拟译文逐段到达（真实实现里这里是 SSE） */
+function runTranslateSim() {
+  const dstCells = [...grid.querySelectorAll(".col-dst")];
+  const texts = dstCells.map(c => c.querySelector(".txt") ? c.querySelector(".txt").innerHTML : "");
+  const prog = document.getElementById("progress");
+  const total = dstCells.length;
+
+  dstCells.forEach(c => {
+    if (c.dataset.type === "pre") return;
+    const t = c.querySelector(".txt");
+    if (t) t.innerHTML = '<span class="pending">正在翻译…</span>';
+  });
+
+  if (NOFX) {
+    dstCells.forEach((c, k) => {
+      if (c.dataset.type === "pre") return;
+      const t = c.querySelector(".txt");
+      if (t) t.innerHTML = texts[k];
+    });
+    prog.textContent = "✓ 翻译完成";
+    prog.style.color = "var(--accent)";
+    return;
+  }
+
+  let i = 0, done = 0;
+  const timer = setInterval(() => {
+    const c = dstCells[i];
+    const t = c.querySelector(".txt");
+    if (c.dataset.type === "pre") {
+      i++; return;
+    }
+    t.innerHTML = texts[i];
+    t.classList.add("cursor");
+    setTimeout(() => t.classList.remove("cursor"), 260);
+    done++;
+    prog.textContent = "翻译中 " + done + " / " + total;
+    i++;
+    if (i >= dstCells.length) {
+      clearInterval(timer);
+      prog.textContent = "✓ 翻译完成";
+      prog.style.color = "var(--accent)";
+    }
+  }, 220);
+}
+
+/* ============ 交互 ============ */
+const landing  = document.getElementById("landing");
+const skeleton = document.getElementById("skeleton");
+const reader   = document.getElementById("reader");
+const specNote = document.getElementById("specNote");
+const urlInput = document.getElementById("urlInput");
+const miniUrl  = document.getElementById("miniUrl");
+
+/* 目标语言：写入 langTag；真实实现里这是会持久化的偏好（技术方案 7.3） */
+function updateLangTag() {
+  const v = document.getElementById("langSelect").value;
+  document.getElementById("langTag").textContent = "EN → " + (LANG_NAMES[v] || v);
+}
+
+/* 文章头随语言状态切换 —— 非英文页面只显示页面自己的标题 */
+function applyArticleHead() {
+  const title = document.getElementById("artTitleEn");
+  const transTitle = document.querySelector(".trans-title");
+  const tag = document.getElementById("langTag");
+
+  if (NON_EN) {
+    title.textContent = JP_ARTICLE.title;
+    document.getElementById("artSite").textContent = "Zenn · Engineering";
+    transTitle.style.display = "none";
+    tag.textContent = "检测到 " + (LANG_NAMES[PAGE_LANG] || PAGE_LANG) + " · 未翻译";
+  } else {
+    title.textContent = "Effective Context Engineering for AI Agents";
+    document.getElementById("artSite").textContent = "Anthropic · Engineering";
+    transTitle.style.display = "";
+    updateLangTag();
+  }
+}
+
+document.getElementById("btnRead").addEventListener("click", startRead);
+urlInput.addEventListener("keydown", e => { if (e.key === "Enter") startRead(); });
+
+function startRead() {
+  const v = urlInput.value.trim();
+  if (!v) { toast("先粘贴一个网址"); return; }
+  miniUrl.textContent = v;
+
+  landing.classList.add("hidden");
+  specNote.classList.add("hidden");
+  reader.classList.add("hidden");
+  window.scrollTo({ top: 0 });
+
+  if (NOFX) { enterReader(); return; }
+
+  skeleton.classList.remove("hidden");
+  setTimeout(enterReader, 900);
+}
+
+function enterReader() {
+  skeleton.classList.add("hidden");
+  reader.classList.remove("hidden");
+
+  /* 非英文页面：降级为单栏原文，隐藏模式切换，右上角显示"未翻译"（技术方案 7.5） */
+  reader.dataset.lang = NON_EN ? "non-en" : "en";
+  document.getElementById("langNotice").classList.toggle("hidden", !NON_EN);
+  const prog = document.getElementById("progress");
+  prog.style.color = "";
+  prog.textContent = NON_EN ? "未翻译" : "翻译中 0 / 12";
+
+  applyArticleHead();
+  renderAll();
+}
+
+document.getElementById("btnReRead").addEventListener("click", () => {
+  reader.classList.add("hidden");
+  landing.classList.remove("hidden");
+  specNote.classList.remove("hidden");
+  document.getElementById("progress").style.color = "";
+  window.scrollTo({ top: 0 });
+});
+
+/* 模式切换 */
+document.getElementById("modeSeg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  document.querySelectorAll("#modeSeg button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  grid.dataset.mode = b.dataset.mode;
+  reader.dataset.mode = b.dataset.mode;
+});
+
+/* 字号 */
+let fs = parseInt(localStorage.getItem("br_fontSize") || "17", 10);
+applyFs();
+
+function applyFs() {
+  fs = Math.max(13, Math.min(24, fs));
+  document.documentElement.style.setProperty("--reading-font-size", fs + "px");
+  document.getElementById("zsVal").textContent = fs;
+  localStorage.setItem("br_fontSize", String(fs));
+}
+document.getElementById("btnMinus").addEventListener("click", () => { fs--; applyFs(); });
+document.getElementById("btnPlus").addEventListener("click", () => { fs++; applyFs(); });
+
+/* 深浅色 */
+let theme = QS.get("theme") || localStorage.getItem("br_theme") || "light";
+setTheme(theme);
+function setTheme(t) {
+  theme = t;
+  document.documentElement.dataset.theme = t;
+  document.getElementById("btnTheme").textContent = t === "light" ? "☾" : "☀";
+  localStorage.setItem("br_theme", t);
+}
+document.getElementById("btnTheme").addEventListener("click", () => setTheme(theme === "light" ? "dark" : "light"));
+
+/* 目标语言（源语言锁英文，译文语言可选 10 种） */
+const langSel = document.getElementById("langSelect");
+const savedLang = localStorage.getItem("br_targetLang");
+if (savedLang && LANG_NAMES[savedLang]) langSel.value = savedLang;
+updateLangTag();
+
+langSel.addEventListener("change", e => {
+  localStorage.setItem("br_targetLang", e.target.value);
+  if (NON_EN) {
+    toast("当前不是英文网页，改语言后需要重新抓取");
+    return;
+  }
+  updateLangTag();
+  toast("译文语言已切换为 " + LANG_NAMES[e.target.value] + "（设计稿未实际重译）");
+});
+
+/* 「仍要翻译」—— 语言判定误判时的逃生口（技术方案 4.7 / 7.5） */
+document.getElementById("btnForceTrans").addEventListener("click", () => {
+  document.getElementById("langNotice").classList.add("hidden");
+  reader.dataset.lang = "en";
+  document.getElementById("progress").textContent = "翻译中 0 / 12";
+  toast("已放行本次翻译（设计稿不实际调用模型）");
+});
+
+/* 收藏 / 导出 */
+document.getElementById("btnFav").addEventListener("click", () => {
+  toast("收藏需要登录 · 点击进入登录");
+});
+document.getElementById("btnExport").addEventListener("click", () => {
+  toast("已复制「原文 + 译文」Markdown");
+});
+
+/* Toast */
+function toast(msg) {
+  const w = document.getElementById("toastWrap");
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = msg;
+  w.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+/* 设计稿调试入口：?view=reading */
+if (QS.get("view") === "reading") startRead();
+
+/* 模拟非英文网页时，把示例网址也换成对应语言的站点，避免文不对题 */
+if (NON_EN) {
+  const u = "https://zenn.dev/example/articles/context-engineering";
+  document.getElementById("urlInput").value = u;
+  document.getElementById("miniUrl").textContent = u;
+}
+
+/* 布局自检：?diag=1 —— 把超出视口的元素写进 title，便于无头浏览器排查溢出 */
+if (QS.get("diag") === "1") {
+  setTimeout(() => {
+    const vw = document.documentElement.clientWidth;
+    const bad = [...document.querySelectorAll("*")]
+      .map(e => ({ e, r: e.getBoundingClientRect() }))
+      .filter(o => o.r.right > vw + 1 || o.r.width > vw + 1)
+      .slice(0, 14)
+      .map(o => o.e.tagName + "." + (typeof o.e.className === "string" ? o.e.className : "") +
+                "|w" + Math.round(o.r.width) + "|r" + Math.round(o.r.right));
+    document.title = "VW=" + vw + " SCROLLW=" + document.documentElement.scrollWidth +
+                     " BODY=" + Math.round(document.body.getBoundingClientRect().width) +
+                     " /// " + (bad.join(" ;; ") || "clean");
+  }, 300);
+}
+</script>
+</body>
+</html>
