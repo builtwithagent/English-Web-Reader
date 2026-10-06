@@ -250,6 +250,32 @@ export async function startDevStack({
   return { ok: true, logs, stop };
 }
 
+/**
+ * 把下载目录指到指定位置。
+ *
+ * 必须显式设置：默认行为在无头模式下是**拒绝下载**，点击导出按钮什么都不会发生，
+ * 脚本只能看到"点了没反应"，很难判断是按钮坏了还是浏览器拦了。
+ * 指到临时目录之后，导出就变成了一件能被读取和断言的事。
+ */
+export async function setDownloadDir(cdp, dir) {
+  try {
+    await cdp.send('Browser.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: dir,
+      eventsEnabled: true,
+    });
+    return true;
+  } catch {
+    // 老一点的 Chrome 只认 Page 域上的同名命令
+    try {
+      await cdp.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: dir });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 // ============================================================================
 // 截图
 // ============================================================================

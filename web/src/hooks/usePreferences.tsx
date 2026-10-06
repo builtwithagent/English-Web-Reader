@@ -22,6 +22,7 @@ import {
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  TARGET_LANGS,
   type DisplayMode,
   type Preferences,
   type TargetLang,
@@ -58,7 +59,7 @@ function loadPreferences(): Preferences {
       fontSize: clampFontSize(parsed.fontSize ?? fallback.fontSize),
       mode: isDisplayMode(parsed.mode) ? parsed.mode : fallback.mode,
       theme: parsed.theme === 'dark' || parsed.theme === 'light' ? parsed.theme : fallback.theme,
-      targetLang: parsed.targetLang ?? fallback.targetLang,
+      targetLang: isTargetLang(parsed.targetLang) ? parsed.targetLang : fallback.targetLang,
     };
   } catch {
     // 隐私模式 / 配额满 / JSON 损坏 —— 一律退回默认值，不让偏好把应用卡死
@@ -80,6 +81,18 @@ function clampFontSize(n: number): number {
 
 function isDisplayMode(v: unknown): v is DisplayMode {
   return v === 'both' || v === 'dst' || v === 'src';
+}
+
+/**
+ * 目标语言的合法性校验。
+ *
+ * 别省这一步：localStorage 里可能留着旧版本写的值（比如列表改版前存在的 `en`）。
+ * 直接采纳的话，`<select value="en">` 找不到对应 option，**界面上会显示成空白**，
+ * 而请求照样发出去 —— 用户看到的是"语言选择器空着，但右边在出中文"。
+ * 后端有 `normalizeTargetLang` 兜底，前端也得自己兜住。
+ */
+function isTargetLang(v: unknown): v is TargetLang {
+  return typeof v === 'string' && TARGET_LANGS.some((lang) => lang.value === v);
 }
 
 // ============================================================================

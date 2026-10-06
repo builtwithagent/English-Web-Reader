@@ -1,10 +1,11 @@
 /**
- * M2 / M3 预览自检。
+ * M2 / M3 / M4 预览自检。
  *
- * 起 Nest(3000) + Vite(5173)，用无头 Chrome 截三个场景的图：
+ * 起 Nest(3000) + Vite(5173)，用无头 Chrome 跑四个场景：
  *   - 英文页面     → 双栏对照 + **译文真的落到右栏**
  *   - 非英文页面   → 单栏降级 + 说明条（**一个翻译请求都不发**）
  *   - 带插图的页面 → 跨栏块不被中缝竖线劈开
+ *   - 实用功能     → 导出 Markdown 真的落盘 + 偏好真的跨刷新记得住（不截图，只断言）
  * 顺带验证 Vite 的 /api 代理在真实链路里是通的（前后端唯一的联调点）。
  *
  * **上游接的是本地替身**（`server/scripts/mock-deepseek.mjs`），不是真 DeepSeek：
@@ -16,8 +17,11 @@
  * 截图与 CDP 那套在 scripts/lib/cdp.mjs，这里只留"断言什么"。
  *
  * 用法：node scripts/shot.mjs
+ *      SHOT_KEEP_EXPORT=<目录> node scripts/shot.mjs   # 顺带留一份导出的 md，供肉眼检查
  */
 
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startMockUpstream } from '../../server/scripts/mock-deepseek.mjs';
@@ -25,6 +29,7 @@ import {
   capturePage,
   clearPrevious,
   launchChrome,
+  setDownloadDir,
   startDevStack,
   stamp,
   waitUntil,
@@ -63,6 +68,9 @@ const CASES = [
     url: 'https://www.anthropic.com/engineering/managed-agents',
     focus: '.col-shared[data-type="img"]',
   },
+  // M4 的两项实用功能：导出 Markdown、偏好记忆。
+  // 都在这一个场景里跑 —— 它们操作的是同一个已加载的页面，分开反而要重抓一次。
+  { name: '实用功能', url: `${MDN}/en-US/docs/Web/JavaScript/Guide/Introduction`, utility: true },
 ];
 
 /** 把页面的实测状态取回来（经 JSON 字符串往返 —— CDP 对复杂返回值的序列化有限制） */
@@ -226,10 +234,195 @@ async function switchLangAndWait(cdp, lang, marker) {
   };
 }
 
+/**
+ * 导出 Markdown（PRD 3.6）。
+ *
+ * 无头浏览器**默认拒绝下载**，所以启动时就得把下载目录指到临时目录（setDownloadDir），
+ * 否则点了按钮什么也不会发生，脚本只能看到"点了没反应" —— 分不清是按钮坏了还是被拦了。
+ */
+async function checkExport(cdp, downloadDir) {
+  const clicked = await cdp.eval(`(() => {
+    const btn = document.querySelector('.btn-export');
+    if (!btn || btn.disabled) return false;
+    btn.click();
+    return true;
+  })()`);
+  if (!clicked) return { ok: false, detail: '导出按钮不可点' };
+
+  const file = await waitForDownload(downloadDir, 15000);
+  if (!file) return { ok: false, detail: '没等到下载的 .md 文件' };
+
+  const text = readFileSync(file, 'utf8');
+  const lines = text.split('\n');
+
+  const checks = [
+    ['文件名以 .md 结尾', file.endsWith('.md')],
+    ['首行是文章标题（# 开头）', /^# \S/.test(lines[0] ?? '')],
+    ['来源信息在位', text.includes('> **来源**：https://')],
+    ['写明了格式约定', text.includes('格式约定')],
+    ['含原文', text.includes('This chapter introduces JavaScript')],
+    ['译文用引用块', /^> 【/m.test(text)],
+    ['代码块原样保留', /^```/m.test(text)],
+  ];
+
+  // 断言只能证明"该有的构件都在"，证明不了"读起来顺不顺"。
+  // 需要肉眼过一遍时，用 SHOT_KEEP_EXPORT=<目录> 把产物留一份出来。
+  const keep = process.env.SHOT_KEEP_EXPORT;
+  if (keep) {
+    try {
+      mkdirSync(keep, { recursive: true });
+      copyFileSync(file, path.join(keep, path.basename(file)));
+    } catch {
+      /* 留存只是辅助手段，失败了不影响断言结果 */
+    }
+  }
+
+  return {
+    ok: checks.every(([, pass]) => pass),
+    checks,
+    detail: `${path.basename(file)} · ${text.length} 字节`,
+  };
+}
+
+/** 轮询下载目录，等一个非 .crdownload 的 .md 出现 */
+async function waitForDownload(dir, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const hit = readdirSync(dir).find((f) => f.endsWith('.md') && !f.endsWith('.crdownload'));
+      if (hit) return path.join(dir, hit);
+    } catch {
+      /* 目录还没建出来 */
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return null;
+}
+
+/**
+ * 偏好记忆（PRD 3.6）。
+ *
+ * 分两步验，缺一不可：**写进去了没**（localStorage），**读回来了没**（刷新后 DOM 还是那样）。
+ * 只验前者会漏掉"读的时候被校验逻辑吃掉"的问题 —— 顺带说，这次审查就抓到一个：
+ * `targetLang` 从 localStorage 读回时没做合法性校验，一个旧版本残留的 `en`
+ * 会让语言选择器显示成空白。
+ */
+async function checkPreferences(cdp) {
+  const readState = `JSON.stringify({
+    fontSize: document.documentElement.style.getPropertyValue('--reading-font-size'),
+    theme: document.documentElement.dataset.theme,
+    mode: document.querySelector('.grid')?.dataset.mode,
+    lang: document.querySelector('.lang-pair select')?.value,
+    stored: localStorage.getItem('ewr_preferences'),
+  })`;
+
+  const before = await cdp.evalJson(readState);
+  if (!before) return { ok: false, detail: '改之前的状态读不回来' };
+
+  // 三项都动一下：字号 +2、模式 → 仅原文、深浅色反转
+  await cdp.eval(`(() => {
+    const plus = [...document.querySelectorAll('.zs-group .btn.icon')].pop();
+    plus?.click(); plus?.click();
+    document.querySelectorAll('.mode-seg button')[2]?.click();
+    document.querySelector('[aria-label="切换深浅色"]')?.click();
+    return true;
+  })()`);
+  await new Promise((r) => setTimeout(r, 300));
+
+  const changed = await cdp.evalJson(readState);
+  if (!changed) return { ok: false, detail: '改之后的状态读不回来' };
+
+  let stored = null;
+  try {
+    stored = JSON.parse(changed.stored ?? 'null');
+  } catch {
+    /* 坏值由下面的断言判 */
+  }
+
+  // 刷新，看值是不是真的回来了（URL 上的 ?url= 还在，会自动重新载入这篇文章）
+  await cdp.send('Page.reload');
+  await waitUntil(cdp, `!!document.querySelector('.grid')`, 45000);
+  await new Promise((r) => setTimeout(r, 500));
+  const after = await cdp.evalJson(readState);
+
+  const checks = [
+    [
+      '三项都真的变了（字号 / 模式 / 深浅色）',
+      changed.fontSize !== before.fontSize &&
+        changed.mode !== before.mode &&
+        changed.theme !== before.theme,
+    ],
+    [
+      '落进了 localStorage',
+      !!stored &&
+        stored.fontSize === Number.parseInt(changed.fontSize, 10) &&
+        stored.mode === changed.mode &&
+        stored.theme === changed.theme,
+    ],
+    ['刷新后字号还在', after?.fontSize === changed.fontSize],
+    ['刷新后显示模式还在', after?.mode === changed.mode],
+    ['刷新后深浅色还在', after?.theme === changed.theme],
+    ['刷新后目标语言还在', after?.lang === changed.lang],
+  ];
+
+  return {
+    ok: checks.every(([, pass]) => pass),
+    checks,
+    detail: `${before.fontSize}/${before.mode}/${before.theme} → ${changed.fontSize}/${changed.mode}/${changed.theme} → 刷新后 ${after?.fontSize}/${after?.mode}/${after?.theme}`,
+  };
+}
+
+/**
+ * 清掉这个源上的 localStorage。
+ *
+ * 直接打 `Storage.clearDataForOrigin` 而不是"打开页面再执行 JS 清理"：
+ * 后者要求先导航一次，等于每个场景多开一次页面；而这条命令在
+ * `about:blank` 上就能生效。
+ */
+async function clearAppStorage(cdp) {
+  try {
+    await cdp.send('Storage.clearDataForOrigin', {
+      origin: SITE,
+      storageTypes: 'local_storage',
+    });
+  } catch {
+    // 清不掉不该把整个自检卡住 —— 场景本身还是能跑，只是可能互相带一点残留
+  }
+}
+
+/** 只打开页面并等就绪，不截图 —— 给"只做验证"的场景用 */
+async function openAndWait(cdp, url) {
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width: VIEWPORT.width,
+    height: VIEWPORT.height,
+    deviceScaleFactor: 1.5,
+    mobile: false,
+  });
+  await cdp.send('Page.enable');
+  await cdp.send('Runtime.enable');
+  await cdp.send('Page.navigate', { url });
+  return waitUntil(cdp, READY, 45000);
+}
+
+/**
+ * 就地截图（不导航）。
+ *
+ * 不能复用 `capturePage` —— 它会先 `Page.navigate`，一把把页面刷回初始态。
+ * 这里要做的是"把刚验证完的那个状态拍下来"（深色 + 仅原文 + 19px 是 M4 的直接证据），
+ * 刷新一下证据就没了。
+ */
+async function cdpScreenshot(cdp, outFile) {
+  const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
+  writeFileSync(outFile, Buffer.from(data, 'base64'));
+}
+
 async function main() {
   // 先起替身上游，拿到地址才能把它注入给 Nest
   const mock = await startMockUpstream();
   console.log(`Mock 上游  →  ${mock.baseUrl}`);
+
+  // 无头浏览器默认拒绝下载，导出验证得先把下载目录指到这儿
+  const downloadDir = mkdtempSync(path.join(tmpdir(), 'ewr-dl-'));
 
   const stack = await startDevStack({
     repoRoot,
@@ -278,6 +471,7 @@ async function main() {
 
     console.log('启动无头 Chrome（CDP）…');
     chrome = await launchChrome({ debugPort: DEBUG_PORT });
+    await setDownloadDir(chrome.cdp, downloadDir);
 
     const removed = clearPrevious(outDir, '实现预览-');
     if (removed) console.log(`清掉上一批预览图 ${removed} 张`);
@@ -286,8 +480,59 @@ async function main() {
     let failed = 0;
 
     for (const c of CASES) {
-      const out = path.join(outDir, `实现预览-${c.name}-${ts}.png`);
       const pageUrl = `${SITE}/?url=${encodeURIComponent(c.url)}`;
+
+      // ---- 每个场景都从干净的偏好开始 ----
+      //
+      // 四个场景共用同一个浏览器 profile，localStorage 是跨场景存活的。
+      // 场景「英文双栏」结尾会把目标语言切到日语并落盘，于是后面几个场景
+      // 一进来就是日语 —— 不是什么大问题，但它是**隐性耦合**：
+      // 导出的 Markdown 会莫名标着"日本語"，偏好用例的起点也不再是默认值，
+      // 将来某一场景失败时，你没法确定它是不是被前一场景带歪的。
+      // 清一次，场景之间就没有看不见的因果。
+      await clearAppStorage(chrome.cdp);
+
+      // ---- 只验证、不截图的场景（M4 实用功能）----
+      if (c.utility) {
+        if (!(await openAndWait(chrome.cdp, pageUrl))) {
+          console.log(`\n✗ ${c.name}：没等到阅读态`);
+          failed++;
+          continue;
+        }
+        console.log(`\n${c.name}`);
+
+        const ex = await checkExport(chrome.cdp, downloadDir);
+        console.log(`  ${ex.ok ? '✓' : '✗'} 导出 Markdown  ${ex.detail}`);
+        if (!ex.ok) {
+          failed++;
+          for (const [label, pass] of ex.checks ?? []) if (!pass) console.log(`      · ${label}`);
+        }
+
+        // 语言切换要放在偏好之前：它需要双栏可见（偏好会切到"仅原文"，
+        // 那时 .col-dst 是 display:none，innerText 读到的是空串）
+        const flip = await switchLangAndWait(chrome.cdp, 'ja', '【日语】');
+        console.log(`  ${flip.ok ? '✓' : '✗'} 切目标语言后整篇重翻  ${flip.detail}`);
+        if (!flip.ok) failed++;
+
+        // 把偏好改掉（字号 17→19、模式→仅原文、浅色→深色），刷新验记忆
+        const pf = await checkPreferences(chrome.cdp);
+        console.log(`  ${pf.ok ? '✓' : '✗'} 偏好记忆跨刷新保持  ${pf.detail}`);
+        if (!pf.ok) {
+          failed++;
+          for (const [label, pass] of pf.checks ?? []) if (!pass) console.log(`      · ${label}`);
+        }
+
+        // 顺手把改完偏好的样子留下来 —— 深色 + 仅原文 + 19px 是 M4 的直接证据。
+        // 先等这一轮的翻译收尾：刷新会重新发起整篇翻译，不等的话画面里
+        // 挂着「5/48 翻译中」，看起来像卡住了，而不是"这两个偏好生效了"。
+        await waitUntil(chrome.cdp, READY, 30000);
+        const shot = path.join(outDir, `实现预览-深色仅原文-${ts}.png`);
+        await cdpScreenshot(chrome.cdp, shot);
+        console.log(`  截图  →  ${path.basename(shot)}`);
+        continue;
+      }
+
+      const out = path.join(outDir, `实现预览-${c.name}-${ts}.png`);
       const shot = await capturePage(chrome.cdp, {
         url: pageUrl,
         outFile: out,
@@ -374,6 +619,12 @@ async function main() {
     if (chrome) chrome.child.kill();
     stack.stop();
     await mock.close();
+    // 下载目录是临时目录里的，跑完就清 —— 不清的话每跑一次都在系统 temp 里留一份 md
+    try {
+      rmSync(downloadDir, { recursive: true, force: true });
+    } catch {
+      /* 文件可能还被浏览器占着，清不掉就算了 */
+    }
   }
 }
 

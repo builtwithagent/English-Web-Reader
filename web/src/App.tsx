@@ -23,7 +23,8 @@ import { ToastStack, type ToastItem } from './components/ToastStack';
 import { useArticle } from './hooks/useArticle';
 import { useTranslation } from './hooks/useTranslation';
 import { usePreferencesApi } from './hooks/usePreferences';
-import { targetLangLabel } from './types';
+import { buildMarkdown, downloadText, suggestFileName } from './markdown';
+import { targetLangLabel, type DisplayMode } from './types';
 
 export function App() {
   const { prefs, setMode, bumpFontSize, toggleTheme, setTargetLang } = usePreferencesApi();
@@ -96,6 +97,34 @@ export function App() {
       enabled: translateEnabled,
     });
 
+  /**
+   * **实际生效**的显示模式。
+   *
+   * 和 `Reader` 内部那份是同一个判断：降级态下即便偏好存的是"双语对照"，
+   * 屏幕上也只有原文。导出必须跟屏幕上看到的一致 ——
+   * 否则一篇中文文章会导出一份写着"English → 简体中文"的双语文件。
+   */
+  const effectiveMode: DisplayMode = degraded ? 'src' : prefs.mode;
+
+  const handleExport = useCallback(() => {
+    if (!article) return;
+
+    const { markdown, missing } = buildMarkdown({
+      article,
+      translations,
+      mode: effectiveMode,
+      targetLang: prefs.targetLang,
+    });
+    downloadText(markdown, suggestFileName(article));
+
+    // 译文没齐时照样导 —— 不打断用户，但得说清楚少了什么
+    if (missing > 0) {
+      toast(`已导出 · ${missing} 段还没译出，已保留原文`);
+    } else {
+      toast('已导出 Markdown');
+    }
+  }, [article, translations, effectiveMode, prefs.targetLang, toast]);
+
   return (
     <>
       <Topbar
@@ -109,7 +138,7 @@ export function App() {
         theme={prefs.theme}
         onToggleTheme={toggleTheme}
         onToggleFavorite={() => toast('收藏需要登录 · 点击进入登录')}
-        onExport={() => toast('导出功能还没做')}
+        onExport={handleExport}
         canExport={showReader}
       />
 
