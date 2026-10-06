@@ -1,9 +1,11 @@
 /**
- * 批量探测：把 docs/英文站点样本.txt 里的 URL 逐个送进 /api/article，
+ * 批量探测：把 docs/站点抽查/英文站点样本.txt 里的 URL 逐个送进 /api/article，
  * 记录**真实**的抓取与提取结果。
  *
  * 这个脚本不猜"某某站点大概行不行"——全部实测，可达性、语言判定、
  * 提取层级、块数都从响应里读。
+ *
+ * 产物统一落在 docs/站点抽查/ 下（清单、报告、原始数据、截图都在那儿）。
  *
  * 用法：
  *   node scripts/probe-sites.mjs                    # 全部
@@ -20,8 +22,8 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
-const LIST_FILE = path.join(repoRoot, 'docs', '英文站点样本.txt');
-const OUT_DIR = path.join(repoRoot, 'docs');
+const OUT_DIR = path.join(repoRoot, 'docs', '站点抽查');
+const LIST_FILE = path.join(OUT_DIR, '英文站点样本.txt');
 
 const args = process.argv.slice(2);
 const argOf = (name, dflt) => {
@@ -283,10 +285,14 @@ async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
   // 每跑一次丢一个 JSON，不做清理会一版一版堆下去。
   // 文件名仍带时间戳，只是开跑前把上一批删掉；删除范围严格限定在本脚本自己的产物前缀上。
+  //
+  // **按范围分档**：只跑某一组（--section=A）时产物叫「探测结果-A组-*.json」，
+  // 清理也只清同档的。否则跑一次单组就会把全量基线一起删掉 —— 这个坑刚踩过。
+  const scope = SECTION ? `${SECTION.toUpperCase()}组` : '全部';
   for (const f of readdirSync(OUT_DIR)) {
-    if (f.startsWith('站点探测结果-') && f.endsWith('.json')) rmSync(path.join(OUT_DIR, f));
+    if (f.startsWith(`探测结果-${scope}-`) && f.endsWith('.json')) rmSync(path.join(OUT_DIR, f));
   }
-  const outFile = path.join(OUT_DIR, `站点探测结果-${ts}.json`);
+  const outFile = path.join(OUT_DIR, `探测结果-${scope}-${ts}.json`);
   writeFileSync(outFile, JSON.stringify({ base: BASE, at: new Date().toISOString(), results }, null, 2));
   console.log(`\n原始结果：${path.relative(repoRoot, outFile)}`);
 }

@@ -4,6 +4,9 @@
  * 和 shot.mjs 的分工：shot.mjs 是**固定场景的回归自检**（断言"必须怎样"），
  * 这个是**样本抽查**（观察"实际怎样"），不做断言，只如实记录。
  *
+ * 产物统一落在 docs/站点抽查/ 下：截图进 `截图/`，总览页是 `总览-<ts>.html`，
+ * 与清单（英文站点样本.txt）和报告（英文站点加载观察.md）放在一起。
+ *
  * 用法：
  *   node scripts/shot-sites.mjs                # 跑内置的代表性样本
  *   node scripts/shot-sites.mjs --only=npr.org,techcrunch.com
@@ -17,7 +20,8 @@ import { capturePage, clearPrevious, launchChrome, startDevStack, stamp } from '
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(webRoot, '..');
-const outDir = path.join(repoRoot, 'docs', 'design');
+const outDir = path.join(repoRoot, 'docs', '站点抽查');
+const shotDir = path.join(outDir, '截图');
 
 const NEST_PORT = 3000;
 const VITE_PORT = 5173;
@@ -101,7 +105,7 @@ function buildSheet(rows, ts) {
       <div class="title">${esc(r.info?.title || '（没有取到标题）')}</div>
       <div class="first">「${esc(r.info?.firstTxt || '')}」</div>
     </figcaption>
-    <img src="design/${path.basename(r.file)}" alt="${esc(r.host)}" loading="lazy">
+    <img src="截图/${path.basename(r.file)}" alt="${esc(r.host)}" loading="lazy">
   </figure>`;
     })
     .join('');
@@ -136,7 +140,7 @@ function buildSheet(rows, ts) {
               border-top:1px solid var(--line); background:#fff; }
 </style></head><body>
 <h1>英文站点抽查 · 阅读器实际效果</h1>
-<p class="sub">无头 Chrome 实拍，${ts} · 视口 ${VIEWPORT.width}px · 截图只显示页面上部，完整图见 docs/design/</p>
+<p class="sub">无头 Chrome 实拍，${ts} · 视口 ${VIEWPORT.width}px · 截图只显示页面上部，完整图见同目录 截图/</p>
 <div class="grid">${cards}</div>
 </body></html>`;
 }
@@ -157,16 +161,17 @@ async function main() {
     console.log('启动无头 Chrome（CDP）…');
     chrome = await launchChrome({ debugPort: DEBUG_PORT });
 
-    const removed = clearPrevious(outDir, '站点抽查-');
+    // 截图目录是专用的，开跑前清掉上一批（文件名仍带时间戳，避免"看着是新图其实是缓存"）
+    const removed = clearPrevious(shotDir, '');
     if (removed) console.log(`清掉上一批抽查图 ${removed} 张`);
 
-    mkdirSync(outDir, { recursive: true });
+    mkdirSync(shotDir, { recursive: true });
     const ts = stamp();
     const rows = [];
 
     for (const s of list) {
       const host = new URL(s.url).hostname.replace(/^www\./, '');
-      const file = path.join(outDir, `站点抽查-${host}-${ts}.png`);
+      const file = path.join(shotDir, `${host}-${ts}.png`);
       process.stdout.write(`  → ${host} … `);
 
       const shot = await capturePage(chrome.cdp, {
@@ -181,7 +186,7 @@ async function main() {
       console.log(info?.error ? `✗ ${info.error.slice(0, 46)}` : `✓ ${info.cells} 块`);
     }
 
-    const sheet = path.join(repoRoot, 'docs', `站点抽查-${ts}.html`);
+    const sheet = path.join(outDir, `总览-${ts}.html`);
     writeFileSync(sheet, buildSheet(rows, ts));
 
     console.log('\n── 汇总 ──────────────────────────────');
