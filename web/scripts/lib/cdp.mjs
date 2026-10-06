@@ -160,18 +160,55 @@ export async function waitUntil(cdp, expression, timeoutMs = 30000) {
 // 起本地服务栈
 // ============================================================================
 
+/** 端口上已经有东西在应答了吗 */
+async function isServing(port, path = '/') {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}${path}`, { signal: AbortSignal.timeout(2000) });
+    return res.status > 0;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 起 Nest(3000) + Vite(5173)。
  * 两个都要等：Vite 起得比 Nest 快，只等 Vite 会撞上代理 ECONNREFUSED。
+ *
+ * `nestEnv` 用来给 Nest 注入额外环境变量 —— 目前唯一的用途是
+ * `DEEPSEEK_BASE_URL` 指向本地 Mock 上游，好让翻译链路在自检里也能真跑一遍。
  */
-export async function startDevStack({ repoRoot, webRoot, nestPort = 3000, vitePort = 5173 }) {
+export async function startDevStack({
+  repoRoot,
+  webRoot,
+  nestPort = 3000,
+  vitePort = 5173,
+  nestEnv = {},
+}) {
   const logs = [];
   const procs = [];
 
-  const start = (args, cwd, tag) => {
+  // ---- 先探端口，这一步是必需的 ----
+  //
+  // 如果端口上已经有一个**旧进程**在跑，新起的那个会 EADDRINUSE 静默退出，
+  // 而紧接着的"等就绪"却被旧进程应答 —— 于是自检一路绿灯地打在旧代码上。
+  // 症状极具迷惑性：新加的路由报 404，但 `/api/article` 通得好好的，
+  // 看起来像"路由没注册"，其实是"根本没连上新进程"。（这个坑刚踩过。）
+  const busy = [];
+  if (await isServing(nestPort, '/api/article?url=x')) busy.push(nestPort);
+  if (await isServing(vitePort, '/')) busy.push(vitePort);
+  if (busy.length) {
+    return {
+      ok: false,
+      reason: 'port-busy',
+      logs: [`端口 ${busy.join(' / ')} 已被占用。先关掉占用它的进程（多半是上一次自检留下的孤儿），再跑。`],
+      stop: () => {},
+    };
+  }
+
+  const start = (args, cwd, tag, extraEnv = {}) => {
     const child = spawn(process.execPath, args, {
       cwd,
-      env: { ...process.env, PORT: String(nestPort) },
+      env: { ...process.env, ...extraEnv },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     child.stdout.on('data', (c) => logs.push(`[${tag}] ${c}`));
@@ -182,8 +219,13 @@ export async function startDevStack({ repoRoot, webRoot, nestPort = 3000, vitePo
   };
 
   console.log(`启动 Nest(${nestPort}) 与 Vite(${vitePort})…`);
-  start([path.join(repoRoot, 'server', 'dist', 'main.js')], path.join(repoRoot, 'server'), 'nest');
-  start(
+  const nest = start(
+    [path.join(repoRoot, 'server', 'dist', 'main.js')],
+    path.join(repoRoot, 'server'),
+    'nest',
+    { PORT: String(nestPort), ...nestEnv },
+  );
+  const vite = start(
     [path.join(webRoot, 'node_modules', 'vite', 'bin', 'vite.js'), '--port', String(vitePort), '--strictPort'],
     webRoot,
     'vite',
@@ -200,6 +242,10 @@ export async function startDevStack({ repoRoot, webRoot, nestPort = 3000, vitePo
 
   if (!(await waitFor(`http://127.0.0.1:${nestPort}/api/article?url=x`))) return fail('nest');
   if (!(await waitFor(`http://localhost:${vitePort}/`))) return fail('vite');
+  // 端口探测和"等就绪"之间仍有竞态窗口，起来之后再确认一次进程还在
+  if (nest.exitCode !== null) return fail('nest-exited');
+  if (vite.exitCode !== null) return fail('vite-exited');
+
   console.log('Nest 与 Vite 均已就绪');
   return { ok: true, logs, stop };
 }

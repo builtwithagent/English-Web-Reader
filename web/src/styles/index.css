@@ -213,7 +213,17 @@ html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: 
 .zs-val { min-width: 38px; text-align: center; font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .controls .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .controls .status { font-size: 12.5px; color: var(--text-muted); }
-.controls .status.done { color: var(--accent); }
+.controls .status.ok { color: var(--accent); }
+.controls .status.bad { color: var(--danger); }
+/* 内联文字按钮（"2 段没译出来 · 重试"）。做得比 .btn 轻，
+   因为它是个补充动作，不该和字号、模式切换抢注意力。 */
+.controls .link {
+  font: inherit; font-size: 12.5px;
+  color: var(--accent);
+  background: none; border: none; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.controls .link:hover { opacity: .75; }
 
 /* 非英文页面的降级说明条 */
 .notice { max-width: 1180px; margin: 0 auto; padding: 10px 24px 2px; }
@@ -362,15 +372,21 @@ html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: 
 .reader[data-lang="non-en"] .article { max-width: 768px; }
 .reader[data-lang="non-en"] .grid { grid-template-columns: 1fr; }
 
-/* ============ 翻译未接入时的占位 ============ */
+/* ============ 译文侧的三态：待翻译 / 没译出来 / 译文 ============ */
 /* 占位不跟随块的排版：h2 的 1.28 倍字号会让"待翻译"看起来像个真标题。
    统一成小字灰色，明确传达"这里还没有内容"。 */
 .pending { color: var(--text-muted); font-size: 13px; }
-.placeholder-note {
-  font-size: 12.5px; color: var(--text-muted);
-  padding: 9px 13px; margin-bottom: 18px;
-  background: var(--bg-subtle); border: 1px dashed var(--border);
-  border-radius: 8px; line-height: 1.65;
+/* 单块失败。刻意**不用红色** —— 其余块都好好的，标红会让整篇看起来像出了事故，
+   而事实只是这一段没赶上。左侧一个小点标记出"这里本该有东西"就够了。 */
+.miss { color: var(--text-muted); font-size: 13px; }
+.miss::before {
+  content: "";
+  display: inline-block;
+  width: 4px; height: 4px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+  vertical-align: 2px;
 }
 
 /* ============ 加载骨架 ============ */

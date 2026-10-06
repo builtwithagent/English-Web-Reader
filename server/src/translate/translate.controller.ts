@@ -1,8 +1,8 @@
 import { Body, Controller, Logger, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { AppError, type ErrorCode } from '../common/errors';
+import { AppError } from '../common/errors';
 import { TranslateRequestDto } from './translate.dto';
-import { TranslateService, type TranslateEvent } from './translate.service';
+import { TranslateService } from './translate.service';
 
 /**
  * `POST /api/translate` —— SSE 回流（技术方案 5.2）。
@@ -50,9 +50,15 @@ export class TranslateController {
     } catch (err) {
       // 能走到这里的只有**整体性**故障（单块失败是普通事件，不会抛）。
       // 此时头已经发出去了，只能把错误当成一条流事件交给前端。
-      const code: ErrorCode = err instanceof AppError ? err.code : 'internal_error';
-      this.logger.error(`翻译流出错：${code}`, err instanceof Error ? err.stack : undefined);
-      writeFrame(res, JSON.stringify({ error: { code } } satisfies TranslateEvent));
+      const appError = err instanceof AppError ? err : new AppError('internal_error');
+      this.logger.error(
+        `翻译流出错：${appError.code}`,
+        err instanceof Error ? err.stack : undefined,
+      );
+      // 带上完整的 error payload（code + message + hint）。
+      // 前端要拿 message 直接显示给用户，而错误文案**只能有一处定义**（common/errors.ts）——
+      // 前端再抄一份中文表，就是等着两边不一致。
+      writeFrame(res, JSON.stringify({ error: appError.toPayload().error }));
     } finally {
       res.off('close', onClientGone);
       // 哪怕中途出错也要补一个结束标记：前端靠它收尾，

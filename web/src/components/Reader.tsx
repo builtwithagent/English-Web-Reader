@@ -27,8 +27,10 @@ interface ReaderProps {
   targetLang: TargetLang;
   /** 用户选的显示模式；降级态下会被强制成单栏原文 */
   mode: DisplayMode;
-  /** 译文，按块 id 索引 —— M3 接入 SSE 后逐块回填 */
+  /** 译文，**按块 id 索引** —— 服务端并发回流，顺序是乱的，只能按 id 取 */
   translations?: Map<number, string | string[]>;
+  /** 没译出来的块。这些格子显示"没译出来"，其余照常 */
+  failedIds?: ReadonlySet<number>;
   /** 用户在降级说明条上点了「仍要翻译」——本次强制走双栏（误判兜底，4.7） */
   forceTranslate?: boolean;
 }
@@ -38,6 +40,7 @@ export function Reader({
   targetLang,
   mode: preferredMode,
   translations,
+  failedIds,
   forceTranslate,
 }: ReaderProps) {
   // 非英文页面：降级为单栏原文（技术方案 7.5）。
@@ -74,12 +77,6 @@ export function Reader({
           </div>
         </header>
 
-        {!degraded ? (
-          <div className="placeholder-note">
-            译文栏将在接入翻译后填充。当前是 M2 阶段的排版效果，右栏刻意留白为「待翻译」。
-          </div>
-        ) : null}
-
         <div className="grid pane-divider" data-mode={mode}>
           {article.blocks.map((block) => {
             // 不翻译的块（代码 / 图片）两侧共用一份，跨整行
@@ -109,6 +106,7 @@ export function Reader({
                     block={block}
                     side="dst"
                     translation={translations?.get(block.id)}
+                    failed={failedIds?.has(block.id)}
                     highlighted={hoverId === block.id}
                     onHover={setHoverId}
                   />

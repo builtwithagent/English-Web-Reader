@@ -175,15 +175,15 @@ export interface TranslateRequest {
 /**
  * 一条回流事件。三种形状，用 `'id' in event` 区分：
  * - `id` + `text`  → 该块译好了
- * - `id` + `error` → 该块失败，**其它块不受影响**
- * - 只有 `error`   → 整体失败（上游不可用 / 服务端配置有误）
+ * - `id` + `error` → 该块失败，**其它块不受影响**（只给 code，前端统一显示"没译出来"）
+ * - 只有 `error`   → 整体失败，带完整文案（服务端是文案的唯一来源，前端不再抄一份）
  *
- * 流以 `data: [DONE]` 收尾。
+ * 流以 `data: [DONE]` 收尾。**返回顺序 ≠ 请求顺序**（服务端并发 3），必须按 id 回填。
  */
 export type TranslateEvent =
   | { id: number; text: string }
   | { id: number; error: { code: ErrorCode } }
-  | { error: { code: ErrorCode } };
+  | { error: { code: ErrorCode; message?: string; hint?: string } };
 
 // ============================================================================
 // 错误

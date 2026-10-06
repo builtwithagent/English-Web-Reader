@@ -8,7 +8,7 @@
  *    上层只认 `code` 做分支，不解析字符串。
  */
 
-import type { Article, ErrorCode, ErrorPayload } from './types';
+import type { Article, ErrorCode, ErrorPayload, TranslateEvent, TranslateRequest } from './types';
 
 export class ApiError extends Error {
   readonly code: ErrorCode;
@@ -69,4 +69,107 @@ async function toApiError(res: Response): Promise<ApiError> {
     // 落到下面的兜底
   }
   return new ApiError('internal_error', '服务器出了点问题', res.status);
+}
+
+// ============================================================================
+// 翻译（SSE 回流）
+// ============================================================================
+
+/**
+ * 把一整篇的块丢给后端，边收边回填。
+ *
+ * 为什么不用 `EventSource`：它只能发 GET，带不了请求体（整篇的块），
+ * 而且拿不到 HTTP 状态码 —— 被前置校验拦下时（非英文闸门 / 密钥缺失）我们要的是
+ * 那个 422 / 502 和它的 message。所以走 `fetch` + 手动读 `ReadableStream`。
+ *
+ * **不按到达顺序回填**：服务端并发 3，第 8 块可能先于第 3 块到。
+ * 交给 `handlers.onBlock(id, text)`，由上层按 id 落到格子里。
+ */
+export async function streamTranslate(
+  request: TranslateRequest,
+  handlers: TranslateHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      signal,
+    });
+  } catch (err) {
+    if (isAbortError(err)) throw err;
+    throw new ApiError('internal_error', '连不上服务器', 0, '检查一下网络，或稍后再试');
+  }
+
+  // 前置校验被拦下来时走的是普通 JSON 错误（非英文闸门 / 密钥缺失 / 入参不合法）。
+  // 这些**在发流之前**就判死了，所以状态码是有意义的，别当成"流里的错误"处理。
+  if (!res.ok) throw await toApiError(res);
+
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!res.body || !contentType.includes('text/event-stream')) {
+    throw new ApiError('internal_error', '译文服务返回了预期外的格式', res.status);
+  }
+
+  const decoder = new TextDecoder();
+  const stream = res.body as unknown as AsyncIterable<Uint8Array>;
+  let buffer = '';
+
+  // 分帧靠空行。注意分片不保证按帧对齐 —— 一帧可能被劈成两个 chunk，
+  // 所以必须留缓冲，不能对每个 chunk 单独切完就丢。
+  for await (const chunk of stream) {
+    buffer += decoder.decode(chunk, { stream: true });
+
+    let at: number;
+    while ((at = buffer.indexOf('\n\n')) !== -1) {
+      dispatchFrame(buffer.slice(0, at), handlers);
+      buffer = buffer.slice(at + 2);
+    }
+  }
+
+  // 流末尾可能没有空行收尾，残留的也要处理一次
+  if (buffer.trim()) dispatchFrame(buffer, handlers);
+}
+
+export interface TranslateHandlers {
+  /** 某块译好了 */
+  onBlock(id: number, text: string): void;
+  /** 某块失败（**不影响其它块**） */
+  onBlockError(id: number, code: ErrorCode): void;
+  /** 整篇失败（上游不可用 / 服务端配置有误），带可直接展示的文案 */
+  onFatal(error: ApiError): void;
+}
+
+function dispatchFrame(frame: string, handlers: TranslateHandlers): void {
+  for (const rawLine of frame.split('\n')) {
+    const line = rawLine.trim();
+    if (!line.startsWith('data:')) continue; // 空行、`: keep-alive` 之类
+
+    const payload = line.slice(5).trim();
+    if (!payload || payload === '[DONE]') continue;
+
+    let event: TranslateEvent;
+    try {
+      event = JSON.parse(payload) as TranslateEvent;
+    } catch {
+      continue; // 单个坏帧不至于废掉整篇
+    }
+    routeEvent(event, handlers);
+  }
+}
+
+function routeEvent(event: TranslateEvent, handlers: TranslateHandlers): void {
+  // 靠 `'id' in event` 区分三态，与后端契约一一对应
+  if ('id' in event) {
+    if ('error' in event) {
+      handlers.onBlockError(event.id, event.error.code);
+    } else {
+      handlers.onBlock(event.id, event.text);
+    }
+    return;
+  }
+
+  const { code, message, hint } = event.error;
+  handlers.onFatal(new ApiError(code, message || '翻译失败', 200, hint));
 }

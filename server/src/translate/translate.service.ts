@@ -19,16 +19,19 @@ import type { TranslateRequestDto } from './translate.dto';
  *
  *   { "id": 2, "text": "……" }                              成功
  *   { "id": 2, "error": { "code": "translate_timeout" } }   单块失败
- *   { "error": { "code": "translate_unavailable" } }        整体失败（无 id）
+ *   { "error": { "code", "message", "hint" } }              整体失败（无 id，带完整文案）
  *
  * 单块失败**不中断整条流**（技术方案 5.3「逐段独立」）：一篇文章 200 块，
  * 有一块超时就让用户整篇看不到译文，是明显不划算的。
  * 前端靠 `'id' in event` 就能区分这三者。
+ *
+ * 单块失败只给 `code`（前端统一显示"这段没译出来"，不需要具体原因）；
+ * 整体失败才带完整文案 —— 一次而已，多几十字节换"文案只有一处定义"很值。
  */
 export type TranslateEvent =
   | { id: number; text: string }
   | { id: number; error: { code: ErrorCode } }
-  | { error: { code: ErrorCode } };
+  | { error: { code: ErrorCode; message: string; hint?: string } };
 
 @Injectable()
 export class TranslateService {
