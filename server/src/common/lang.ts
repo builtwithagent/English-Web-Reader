@@ -32,8 +32,11 @@ const CJK_RATIO_THRESHOLD = 0.15;
 /**
  * 有效字符数下限。正文太短（提取失败、SPA 空壳）时统计不可信，
  * 此时才允许拿 `<html lang>` 兜底。
+ *
+ * 导出给翻译侧的入口闸门用：样本低于它时判定结果不可信，
+ * **不能**把 `isEnglish === false` 当成"确认是非英文"去拒绝请求。
  */
-const MIN_SAMPLE_CHARS = 80;
+export const MIN_SAMPLE_CHARS = 80;
 
 /** 只取正文开头这么多字符做统计 —— 够判定了，也避免长文全量扫描 */
 const SAMPLE_LIMIT = 20000;

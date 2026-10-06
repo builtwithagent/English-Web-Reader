@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { AppError } from './errors';
+import { AppError, type ErrorCode } from './errors';
 
 /**
  * 全局异常过滤器 —— 这是技术方案里"一套错误码"的落地点。
@@ -30,16 +30,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
-      // 404 之类的框架级异常也走同一套形状，前端只认一种格式
-      response.status(status).json({
-        error: {
-          code: status === 404 ? 'invalid_url' : 'internal_error',
-          message:
-            status === 404
-              ? '这个接口不存在'
-              : '服务器出了点问题，稍后再试',
-        },
-      });
+
+      // 400 基本只有一种来源：全局 ValidationPipe 把请求体挡下来了。
+      // 把具体的字段错误放进 `hint` —— 开发期靠它一眼看出是哪条规则没过。
+      if (status === 400) {
+        const detail = firstConstraintMessage(exception);
+        response.status(400).json({
+          error: {
+            code: 'invalid_request',
+            message: '请求参数不合法',
+            ...(detail ? { hint: detail } : {}),
+          },
+        });
+        return;
+      }
+
+      // 其余框架级异常（404 等）也走同一套形状，前端只认一种格式
+      const code: ErrorCode = status === 404 ? 'not_found' : 'internal_error';
+      response.status(status).json(new AppError(code).toPayload());
       return;
     }
 
@@ -51,4 +59,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
       new AppError('internal_error').toPayload(),
     );
   }
+}
+
+/**
+ * 从 ValidationPipe 抛出的异常里抠出第一条字段错误。
+ *
+ * `HttpException.getResponse()` 的形状随来源而变：可能是字符串，
+ * 也可能是 `{ message: string | string[], error, statusCode }`。
+ * 这里只取第一条 —— 一次请求里往往是同一个字段的多个规则一起没过，
+ * 全塞给前端反而看不清。
+ */
+function firstConstraintMessage(exception: HttpException): string | undefined {
+  const body = exception.getResponse();
+  if (typeof body === 'string') return body;
+  if (typeof body !== 'object' || body === null) return undefined;
+
+  const message = (body as { message?: unknown }).message;
+  if (typeof message === 'string') return message;
+  if (Array.isArray(message) && typeof message[0] === 'string') return message[0];
+  return undefined;
 }

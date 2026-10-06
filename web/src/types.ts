@@ -153,11 +153,47 @@ export const FONT_SIZE_MIN = 13;
 export const FONT_SIZE_MAX = 24;
 
 // ============================================================================
+// 翻译（/api/translate，SSE 回流）
+// 对应 server/src/translate/{translate.dto,translate.service}.ts
+// ============================================================================
+
+/**
+ * 请求体。
+ *
+ * `blocks` 里只带 `id` 与 `text`：图片块、代码块没必要发（后端也会再过滤一遍）。
+ * 服务端**不保证按 id 顺序回流** —— 并发 3 跑，谁先译完谁先到，
+ * 前端靠 `id` 回填，不靠到达顺序。
+ */
+export interface TranslateRequest {
+  /** 原文地址。当前服务端不落缓存，留着是为了稳定契约 */
+  url?: string;
+  /** 非法值服务端静默回落到 `zh-Hans`，不报错 */
+  targetLang?: TargetLang;
+  blocks: Array<{ id: number; text: string }>;
+}
+
+/**
+ * 一条回流事件。三种形状，用 `'id' in event` 区分：
+ * - `id` + `text`  → 该块译好了
+ * - `id` + `error` → 该块失败，**其它块不受影响**
+ * - 只有 `error`   → 整体失败（上游不可用 / 服务端配置有误）
+ *
+ * 流以 `data: [DONE]` 收尾。
+ */
+export type TranslateEvent =
+  | { id: number; text: string }
+  | { id: number; error: { code: ErrorCode } }
+  | { error: { code: ErrorCode } };
+
+// ============================================================================
 // 错误
 // ============================================================================
 
 /** 与 server/src/common/errors.ts 的 `ErrorCode` 保持一致 */
 export type ErrorCode =
+  // ---- 请求侧 ----
+  | 'invalid_request'
+  | 'not_found'
   // ---- 抓取侧 ----
   | 'invalid_url'
   | 'unsupported_protocol'
@@ -174,6 +210,11 @@ export type ErrorCode =
   | 'upstream_error'
   // ---- 翻译侧 ----
   | 'source_not_english'
+  | 'translate_auth_failed'
+  | 'translate_quota'
+  | 'translate_rate_limited'
+  | 'translate_unavailable'
+  | 'translate_timeout'
   // ---- 兜底 ----
   | 'internal_error';
 

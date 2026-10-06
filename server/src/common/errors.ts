@@ -7,6 +7,9 @@
  * - 上游（目标网站 / DeepSeek）的原始错误一律在后端消化，不往外抛。
  */
 export type ErrorCode =
+  // ---- 请求侧 ----
+  | 'invalid_request'
+  | 'not_found'
   // ---- 抓取侧（技术方案 4.6）----
   | 'invalid_url'
   | 'unsupported_protocol'
@@ -23,6 +26,11 @@ export type ErrorCode =
   | 'upstream_error'
   // ---- 翻译侧（技术方案 5.6）----
   | 'source_not_english'
+  | 'translate_auth_failed'
+  | 'translate_quota'
+  | 'translate_rate_limited'
+  | 'translate_unavailable'
+  | 'translate_timeout'
   // ---- 兜底 ----
   | 'internal_error';
 
@@ -36,6 +44,15 @@ interface ErrorSpec {
 }
 
 export const ERROR_SPEC: Record<ErrorCode, ErrorSpec> = {
+  // 入参没通过校验。`hint` 会被全局过滤器填成具体的字段错误（开发期很有用）
+  invalid_request: {
+    status: 400,
+    message: '请求参数不合法',
+  },
+  not_found: {
+    status: 404,
+    message: '这个接口不存在',
+  },
   invalid_url: {
     status: 400,
     message: '这个链接不像网页地址',
@@ -101,6 +118,28 @@ export const ERROR_SPEC: Record<ErrorCode, ErrorSpec> = {
   source_not_english: {
     status: 422,
     message: '这不是英文网页，未做翻译',
+  },
+  // 下面这几条都是"后端替上游扛下来的错"。前端**不该**去猜 401 是用户没登录
+  // 还是我们的 key 过期了 —— 那是两回事，所以状态码统一落在 5xx 区间。
+  translate_auth_failed: {
+    status: 502,
+    message: '翻译服务暂时不可用',
+  },
+  translate_quota: {
+    status: 502,
+    message: '翻译额度已耗尽',
+  },
+  translate_rate_limited: {
+    status: 429,
+    message: '翻译请求太频繁，稍后重试',
+  },
+  translate_unavailable: {
+    status: 502,
+    message: '翻译服务暂时不可用，可稍后重试',
+  },
+  translate_timeout: {
+    status: 504,
+    message: '这一段的翻译超时了',
   },
   internal_error: {
     status: 500,
