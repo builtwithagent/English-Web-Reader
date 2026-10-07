@@ -6,7 +6,7 @@
  * 超时、单块失败、入口语言闸门、DTO 校验、不可译块跳过。
  *
  * 关键点：服务端进程、SSE 协议、并发、重试、错误映射全部是真的，
- * 被替掉的只有 `DEEPSEEK_BASE_URL` 指向的那台机器。
+ * 被替掉的只有 `LLM_BASE_URL` 指向的那台机器。
  *
  * 用法：node scripts/verify-translate.mjs
  */
@@ -14,7 +14,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startMockUpstream } from './mock-deepseek.mjs';
+import { startMockUpstream } from './mock-llm.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -138,10 +138,10 @@ async function main() {
     env: {
       ...process.env,
       PORT: String(PORT),
-      DEEPSEEK_BASE_URL: mock.baseUrl,
+      LLM_BASE_URL: mock.baseUrl,
       // 和真实密钥的形状一致（会走完整的"发出去 → 被拒 → 归一化"路径）
-      DEEPSEEK_API_KEY: 'sk-MOCK-verify-0000',
-      DEEPSEEK_TIMEOUT_MS: String(BLOCK_TIMEOUT_MS),
+      LLM_API_KEY: 'sk-MOCK-verify-0000',
+      LLM_TIMEOUT_MS: String(BLOCK_TIMEOUT_MS),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

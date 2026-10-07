@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MIN_SAMPLE_CHARS, detectPageLang } from '../common/lang';
 import { AppError, type ErrorCode } from '../common/errors';
-import { DeepSeekService } from './deepseek.service';
+import { LlmService } from './llm.service';
 import { buildSystemPrompt, normalizeTargetLang } from './langs';
 import {
   CONCURRENCY,
@@ -37,7 +37,7 @@ export type TranslateEvent =
 export class TranslateService {
   private readonly logger = new Logger(TranslateService.name);
 
-  constructor(private readonly deepseek: DeepSeekService) {}
+  constructor(private readonly llm: LlmService) {}
 
   /**
    * 发流**之前**能做完的所有检查。
@@ -48,7 +48,7 @@ export class TranslateService {
    */
   preflight(dto: TranslateRequestDto): void {
     // 1) 凭证。没有密钥就没必要往后走，也不该让用户等到超时才看到失败
-    if (!this.deepseek.hasApiKey) {
+    if (!this.llm.hasApiKey) {
       throw new AppError('translate_auth_failed');
     }
 
@@ -89,7 +89,7 @@ export class TranslateService {
 
     this.logger.log(
       `翻译 targetLang=${targetLang} 块=${dto.blocks.length} 可译=${jobs.length} ` +
-        `跳过=${skipped} 站点=${describeHost(dto.url)} model=${this.deepseek.model}`,
+        `跳过=${skipped} 站点=${describeHost(dto.url)} model=${this.llm.model}`,
     );
 
     if (jobs.length === 0) return;
@@ -161,7 +161,7 @@ export class TranslateService {
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        return await this.deepseek.complete(system, text, {
+        return await this.llm.complete(system, text, {
           signal,
           maxTokens: estimateMaxTokens(text),
           temperature: TEMPERATURE,

@@ -175,7 +175,7 @@ async function isServing(port, path = '/') {
  * 两个都要等：Vite 起得比 Nest 快，只等 Vite 会撞上代理 ECONNREFUSED。
  *
  * `nestEnv` 用来给 Nest 注入额外环境变量 —— 目前唯一的用途是
- * `DEEPSEEK_BASE_URL` 指向本地 Mock 上游，好让翻译链路在自检里也能真跑一遍。
+ * `LLM_BASE_URL` 指向本地 Mock 上游，好让翻译链路在自检里也能真跑一遍。
  */
 export async function startDevStack({
   repoRoot,

@@ -1,11 +1,11 @@
 /**
- * DeepSeek 上游的**本地替身**。
+ * LLM 上游的**本地替身**（OpenAI 兼容，格式上对任何一家都通用）。
  *
  * 存在意义：翻译链路的每一段（请求构造、SSE 解析、错误映射、并发、重试、超时）
  * 都要能被验证，而这些在"拿真密钥打真上游"时**验证不了** ——
  * 真上游不会给你返回 429、也不会让你挑一个用 401 的密钥。
  *
- * 它替换的只是 `DEEPSEEK_BASE_URL` 指向的地址，其余一律照常：
+ * 它替换的只是 `LLM_BASE_URL` 指向的地址，其余一律照常：
  * 服务端进程、SSE 协议、Authorization 头、流式分片，全是真的。
  *
  * 触发词写在待翻译文本里，用 `__XXX__` 包起来：
@@ -18,8 +18,8 @@
  *   __DELAY:800__  指定首字节延迟（毫秒），用来构造可预期的乱序完成
  *
  * 用法：
- *   node scripts/mock-deepseek.mjs            # 独立跑，监听 4399
- *   import { startMockUpstream } from './mock-deepseek.mjs'   # 被验收脚本拉起
+ *   node scripts/mock-llm.mjs            # 独立跑，监听 4399
+ *   import { startMockUpstream } from './mock-llm.mjs'   # 被验收脚本拉起
  */
 
 import http from 'node:http';
@@ -174,6 +174,6 @@ const isDirectRun =
 
 if (isDirectRun) {
   const { baseUrl } = await startMockUpstream({ port: DEFAULT_PORT });
-  console.log(`Mock DeepSeek 上游已启动：${baseUrl}`);
-  console.log(`接到服务端：DEEPSEEK_BASE_URL=${baseUrl}`);
+  console.log(`Mock LLM 上游已启动：${baseUrl}`);
+  console.log(`接到服务端：LLM_BASE_URL=${baseUrl}`);
 }

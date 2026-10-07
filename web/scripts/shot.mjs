@@ -8,7 +8,7 @@
  *   - 实用功能     → 导出 Markdown 真的落盘 + 偏好真的跨刷新记得住（不截图，只断言）
  * 顺带验证 Vite 的 /api 代理在真实链路里是通的（前后端唯一的联调点）。
  *
- * **上游接的是本地替身**（`server/scripts/mock-deepseek.mjs`），不是真 DeepSeek：
+ * **上游接的是本地替身**（`server/scripts/mock-llm.mjs`），不是真 LLM 服务商：
  * 自检要能离线跑、要能断言"右栏的内容确实是它那一块翻出来的"，
  * 而真上游给的译文是什么没人能预先知道，没法写判据。
  * 替身把译文拼成「【目标语言】+ 原文」，于是"右栏是否包含左栏开头"
@@ -24,7 +24,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startMockUpstream } from '../../server/scripts/mock-deepseek.mjs';
+import { startMockUpstream } from '../../server/scripts/mock-llm.mjs';
 import {
   capturePage,
   clearPrevious,
@@ -430,8 +430,8 @@ async function main() {
     nestPort: NEST_PORT,
     vitePort: VITE_PORT,
     nestEnv: {
-      DEEPSEEK_BASE_URL: mock.baseUrl,
-      DEEPSEEK_API_KEY: 'sk-MOCK-shot-0000',
+      LLM_BASE_URL: mock.baseUrl,
+      LLM_API_KEY: 'sk-MOCK-shot-0000',
     },
   });
 

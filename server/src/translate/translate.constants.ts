@@ -26,7 +26,7 @@ export const MAX_ATTEMPTS = 2;
 /** 重试退避起点，第 n 次重试等 `RETRY_BASE_DELAY_MS * 2^(n-1)` */
 export const RETRY_BASE_DELAY_MS = 400;
 
-/** 单块翻译超时**不在这里** —— 它是上游客户端的属性，由 `DEEPSEEK_TIMEOUT_MS` 配置，
+/** 单块翻译超时**不在这里** —— 它是上游客户端的属性，由 `LLM_TIMEOUT_MS` 配置，
  *  默认 30s。放在编排层会变成第二处定义，两边一改就打架（踩过）。 */
 
 /** 温度调低，翻译任务要的是稳定复现，不是创造力（技术方案 5.3） */

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DeepSeekService } from './deepseek.service';
+import { LlmService } from './llm.service';
 import { TranslateController } from './translate.controller';
 import { TranslateService } from './translate.service';
 
@@ -13,6 +13,6 @@ import { TranslateService } from './translate.service';
  */
 @Module({
   controllers: [TranslateController],
-  providers: [TranslateService, DeepSeekService],
+  providers: [TranslateService, LlmService],
 })
 export class TranslateModule {}

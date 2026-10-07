@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { AppError, type ErrorCode } from '../common/errors';
 
 /**
- * DeepSeek 上游客户端（技术方案 5.1）。
+ * LLM 上游客户端（技术方案 5.1）。
+ *
+ * 接的是**任何 OpenAI 兼容端点**（当前配的是智谱 GLM，见 `.env.example`）。
+ * 所以这一层的配置项一律叫中性的 `LLM_*` 而不是某个厂商的前缀 ——
+ * 以后换上游只改 `.env` 里的值，代码、注释、文档、错误码一个字都不用动。
  *
  * 直接用 Node 原生 `fetch`，不引 SDK —— OpenAI 兼容接口本来就是几个字段的事，
  * 引一个 SDK 反而多一层版本与类型负担。
@@ -14,24 +18,28 @@ import { AppError, type ErrorCode } from '../common/errors';
  *   3. 把上游的各种失败**归一成我们的错误码**
  */
 
-/** 用配置项覆盖是为了让本地 Mock 上游能顶替真实上游 —— 这是端到端测试唯一的入口 */
-const DEFAULT_BASE_URL = 'https://api.deepseek.com';
+/**
+ * 默认上游地址。
+ *
+ * 智谱的 OpenAI 兼容入口是 `https://open.bigmodel.cn/api/paas/v4`，
+ * **末尾的 `/v4` 不能省**：`llm.service` 拼的是 `${baseUrl}/chat/completions`，
+ * 少了它就会打到 `https://open.bigmodel.cn/api/paas/chat/completions`（404）。
+ *
+ * 用配置项覆盖是为了让本地 Mock 上游能顶替真实上游 —— 这是端到端测试唯一的入口。
+ */
+const DEFAULT_BASE_URL = 'https://open.bigmodel.cn/api/paas/v4';
 
 /**
  * 默认模型。
  *
- * 注意：`deepseek-chat` / `deepseek-reasoner` 这两个名字**已经废弃**。
- * 当前档位是 `deepseek-flash`（另有 `deepseek-v4-pro`，约 4 倍价）。
- * 翻译是"照着说一遍"的活，flash 档足够。
+ * 当前是智谱的 `glm-4-flash` —— 免费档，翻译这种"照着说一遍"的活够用。
+ * 名字走配置项 `LLM_MODEL`，不散落在代码里。
  *
- * 另注：`deepseek-v4-flash` 现在也进了 legacy 名单 —— 官方文档的原文是
- * "the legacy names ... are still accepted, but the corresponding models have been retired,
- * their requests are served by the DeepSeek-V4.1-Flash model"。
- * 也就是说旧名字**还能用**（请求会被V4.1-Flash接管、按 Flash 计价），
- * 但既然官方给了新名字，就没理由继续用旧的 —— 这种"还能用但已经不建议"的
- * 名字最容易在某天静默变行为。
+ * 教训（前一轮踩的）：模型名**进 legacy 名单这件事不在 changelog 里**，
+ * 是翻官方定价页的脚注才看到的。上游的名字/价格这类东西要**定期去官方文档对一遍**，
+ * 不能等报错时才查 —— 旧名"还能用"往往意味着它会在某天静默改变行为。
  */
-const DEFAULT_MODEL = 'deepseek-flash';
+const DEFAULT_MODEL = 'glm-4-flash';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -59,25 +67,25 @@ interface ResolvedConfig {
 }
 
 @Injectable()
-export class DeepSeekService {
-  private readonly logger = new Logger(DeepSeekService.name);
+export class LlmService {
+  private readonly logger = new Logger(LlmService.name);
   private readonly config: ResolvedConfig;
 
   constructor(configService: ConfigService) {
     this.config = {
-      apiKey: (configService.get<string>('DEEPSEEK_API_KEY') ?? '').trim(),
-      baseUrl: (configService.get<string>('DEEPSEEK_BASE_URL') ?? DEFAULT_BASE_URL).replace(/\/+$/, ''),
-      model: (configService.get<string>('DEEPSEEK_MODEL') ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL,
-      timeoutMs: Number(configService.get<string>('DEEPSEEK_TIMEOUT_MS') ?? DEFAULT_TIMEOUT_MS),
+      apiKey: (configService.get<string>('LLM_API_KEY') ?? '').trim(),
+      baseUrl: (configService.get<string>('LLM_BASE_URL') ?? DEFAULT_BASE_URL).replace(/\/+$/, ''),
+      model: (configService.get<string>('LLM_MODEL') ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL,
+      timeoutMs: Number(configService.get<string>('LLM_TIMEOUT_MS') ?? DEFAULT_TIMEOUT_MS),
     };
 
     if (!this.config.apiKey) {
-      this.logger.warn('未配置 DEEPSEEK_API_KEY，翻译请求会在入口被拒（translate_auth_failed）');
+      this.logger.warn('未配置 LLM_API_KEY，翻译请求会在入口被拒（translate_auth_failed）');
     } else if (this.config.apiKey.startsWith(MOCK_KEY_PREFIX)) {
       // 只打前缀，绝不打完整密钥
       this.logger.warn(
         `当前使用 Mock 密钥（${MOCK_KEY_PREFIX}…）：调用上游会返回 401，这是预期行为。` +
-          `接真实密钥请改 server/.env 的 DEEPSEEK_API_KEY。`,
+          `接真实密钥请改 server/.env 的 LLM_API_KEY。`,
       );
     }
 

@@ -9,7 +9,7 @@
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "smoke": "node scripts/smoke.mjs",
-    "mock:upstream": "node scripts/mock-deepseek.mjs",
+    "mock:upstream": "node scripts/mock-llm.mjs",
     "verify:translate": "node scripts/verify-translate.mjs",
     "probe": "node scripts/probe-sites.mjs"
   },
