@@ -8,6 +8,9 @@
  *    不是用户偏好；写回去用户下次打开英文页面就会莫名只剩原文。
  *    这里用 `setMode` 的调用点保证（降级态下压根没有切换器），不做自动回写。
  * 2. 字号只改根节点上的 `--reading-font-size` 一个变量，两栏自动同步（7.6）。
+ *
+ * 持久化与校验那部分（含"读回来的脏数据怎么办"）在 `../preferences`，
+ * 这个文件只管状态怎么流。
  */
 
 import {
@@ -19,81 +22,8 @@ import {
   useReducer,
   type ReactNode,
 } from 'react';
-import {
-  FONT_SIZE_MAX,
-  FONT_SIZE_MIN,
-  TARGET_LANGS,
-  type DisplayMode,
-  type Preferences,
-  type TargetLang,
-  type Theme,
-} from '../types';
-
-const STORAGE_KEY = 'ewr_preferences';
-
-const DEFAULT_PREFERENCES: Preferences = {
-  fontSize: 17,
-  mode: 'both',
-  theme: 'light',
-  targetLang: 'zh-Hans',
-};
-
-// ============================================================================
-// 持久化
-// ============================================================================
-
-/** 系统深浅色偏好 —— 用户没手动选过时跟随它（PRD 里的"深浅色跟随"） */
-function systemTheme(): Theme {
-  if (typeof window === 'undefined' || !window.matchMedia) return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function loadPreferences(): Preferences {
-  const fallback: Preferences = { ...DEFAULT_PREFERENCES, theme: systemTheme() };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Partial<Preferences>;
-    // 逐字段校验后再合并：localStorage 里可能是旧版本残留的脏数据
-    return {
-      fontSize: clampFontSize(parsed.fontSize ?? fallback.fontSize),
-      mode: isDisplayMode(parsed.mode) ? parsed.mode : fallback.mode,
-      theme: parsed.theme === 'dark' || parsed.theme === 'light' ? parsed.theme : fallback.theme,
-      targetLang: isTargetLang(parsed.targetLang) ? parsed.targetLang : fallback.targetLang,
-    };
-  } catch {
-    // 隐私模式 / 配额满 / JSON 损坏 —— 一律退回默认值，不让偏好把应用卡死
-    return fallback;
-  }
-}
-
-function savePreferences(prefs: Preferences): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-  } catch {
-    // 存不进去就算了，不影响本次使用
-  }
-}
-
-function clampFontSize(n: number): number {
-  return Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, Math.round(n)));
-}
-
-function isDisplayMode(v: unknown): v is DisplayMode {
-  return v === 'both' || v === 'dst' || v === 'src';
-}
-
-/**
- * 目标语言的合法性校验。
- *
- * 别省这一步：localStorage 里可能留着旧版本写的值（比如列表改版前存在的 `en`）。
- * 直接采纳的话，`<select value="en">` 找不到对应 option，**界面上会显示成空白**，
- * 而请求照样发出去 —— 用户看到的是"语言选择器空着，但右边在出中文"。
- * 后端有 `normalizeTargetLang` 兜底，前端也得自己兜住。
- */
-function isTargetLang(v: unknown): v is TargetLang {
-  return typeof v === 'string' && TARGET_LANGS.some((lang) => lang.value === v);
-}
+import { clampFontSize, loadPreferences, savePreferences } from '../preferences';
+import type { DisplayMode, Preferences, TargetLang, Theme } from '../types';
 
 // ============================================================================
 // Reducer

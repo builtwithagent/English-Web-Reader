@@ -57,7 +57,7 @@ interface UseTranslationOptions {
 }
 
 /** 一次要发的块。与 `TranslateRequest['blocks']` 的唯一差别是保留了原文块类型 */
-interface Job {
+export interface Job {
   id: number;
   text: string;
 }
@@ -197,6 +197,10 @@ export function useTranslation({
 
 // ============================================================================
 // 纯函数
+//
+// 下面两个都导出了：它们是这条链上**最不该出错、又最难在界面上看出来**的两处。
+// 挑错块 → 少发或多发请求；切错行 → 列表项整体错位，而且看起来"有译文"，
+// 只有逐项对照才能发现。所以单独测，不靠肉眼看界面。
 // ============================================================================
 
 /**
@@ -208,7 +212,7 @@ export function useTranslation({
  * - 列表块用换行拼起来发 —— 上游只有 `{id, text}` 一个字段，
  *   而列表要的是"逐项对应"，换行是唯一能表达"项边界"又不改契约的办法
  */
-function buildJobs(blocks: Block[]): Job[] {
+export function buildJobs(blocks: Block[]): Job[] {
   const jobs: Job[] = [];
   for (const block of blocks) {
     if (!block.translatable) continue;
@@ -232,7 +236,7 @@ function sourceText(block: Block): string {
  * 硬按行数切会让后面所有项错位（第 3 项的内容跑到第 2 项去），
  * 那比"这一段少了个项目符号"严重得多。
  */
-function decodeTranslation(block: Block | undefined, text: string): string | string[] {
+export function decodeTranslation(block: Block | undefined, text: string): string | string[] {
   if (!block || (block.type !== 'ul' && block.type !== 'ol')) return text;
 
   const expected = block.items?.length ?? 0;

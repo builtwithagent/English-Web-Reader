@@ -115,6 +115,7 @@ export async function streamTranslate(
   const decoder = new TextDecoder();
   const stream = res.body as unknown as AsyncIterable<Uint8Array>;
   let buffer = '';
+  let done = false;
 
   // 分帧靠空行。注意分片不保证按帧对齐 —— 一帧可能被劈成两个 chunk，
   // 所以必须留缓冲，不能对每个 chunk 单独切完就丢。
@@ -122,14 +123,18 @@ export async function streamTranslate(
     buffer += decoder.decode(chunk, { stream: true });
 
     let at: number;
-    while ((at = buffer.indexOf('\n\n')) !== -1) {
-      dispatchFrame(buffer.slice(0, at), handlers);
+    while (!done && (at = buffer.indexOf('\n\n')) !== -1) {
+      done = dispatchFrame(buffer.slice(0, at), handlers);
       buffer = buffer.slice(at + 2);
     }
+    // 见到 [DONE] 就停：后面的字节不是我们这个协议的一部分，
+    // 继续解析只会在某天把一段垃圾当成译文回填上去。
+    // 和后端读上游 SSE 的写法保持一致（那边也是遇到 [DONE] 就 break）。
+    if (done) break;
   }
 
   // 流末尾可能没有空行收尾，残留的也要处理一次
-  if (buffer.trim()) dispatchFrame(buffer, handlers);
+  if (!done && buffer.trim()) dispatchFrame(buffer, handlers);
 }
 
 export interface TranslateHandlers {
@@ -141,13 +146,22 @@ export interface TranslateHandlers {
   onFatal(error: ApiError): void;
 }
 
-function dispatchFrame(frame: string, handlers: TranslateHandlers): void {
+/**
+ * 处理一帧。返回 `true` 表示这一帧里见到了收尾标记 `[DONE]`。
+ *
+ * 强调一下"见过 [DONE] 就停"这件事：不返回状态、继续往下解析也能跑，
+ * 但那样就等于假设"服务器在 [DONE] 之后不会再发任何东西"。这个假设今天成立，
+ * 某天不会 —— 那时多出来的字节会被当成译文回填到某个格子里，而且在界面上
+ * 看起来完全正常。宁可在这里停住。
+ */
+function dispatchFrame(frame: string, handlers: TranslateHandlers): boolean {
   for (const rawLine of frame.split('\n')) {
     const line = rawLine.trim();
     if (!line.startsWith('data:')) continue; // 空行、`: keep-alive` 之类
 
     const payload = line.slice(5).trim();
-    if (!payload || payload === '[DONE]') continue;
+    if (!payload) continue;
+    if (payload === '[DONE]') return true;
 
     let event: TranslateEvent;
     try {
@@ -157,6 +171,7 @@ function dispatchFrame(frame: string, handlers: TranslateHandlers): void {
     }
     routeEvent(event, handlers);
   }
+  return false;
 }
 
 function routeEvent(event: TranslateEvent, handlers: TranslateHandlers): void {

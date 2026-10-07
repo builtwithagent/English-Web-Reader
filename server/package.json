@@ -8,6 +8,8 @@
     "start": "node dist/main.js",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "smoke": "node scripts/smoke.mjs",
     "mock:upstream": "node scripts/mock-llm.mjs",
     "verify:translate": "node scripts/verify-translate.mjs",
@@ -30,6 +32,7 @@
     "@types/express": "^5.0.6",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.4",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   }
 }
