@@ -20,11 +20,18 @@ const DEFAULT_BASE_URL = 'https://api.deepseek.com';
 /**
  * 默认模型。
  *
- * 注意：`deepseek-chat` / `deepseek-reasoner` 这两个名字**已经废弃**，
- * 继续用会直接报错。当前档位是 `deepseek-v4-flash`（另有 `deepseek-v4-pro`，约 3 倍价）。
+ * 注意：`deepseek-chat` / `deepseek-reasoner` 这两个名字**已经废弃**。
+ * 当前档位是 `deepseek-flash`（另有 `deepseek-v4-pro`，约 4 倍价）。
  * 翻译是"照着说一遍"的活，flash 档足够。
+ *
+ * 另注：`deepseek-v4-flash` 现在也进了 legacy 名单 —— 官方文档的原文是
+ * "the legacy names ... are still accepted, but the corresponding models have been retired,
+ * their requests are served by the DeepSeek-V4.1-Flash model"。
+ * 也就是说旧名字**还能用**（请求会被V4.1-Flash接管、按 Flash 计价），
+ * 但既然官方给了新名字，就没理由继续用旧的 —— 这种"还能用但已经不建议"的
+ * 名字最容易在某天静默变行为。
  */
-const DEFAULT_MODEL = 'deepseek-v4-flash';
+const DEFAULT_MODEL = 'deepseek-flash';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
