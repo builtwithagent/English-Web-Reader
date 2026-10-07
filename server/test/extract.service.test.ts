@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { JSDOM } from 'jsdom';
 import { AppError } from '../src/common/errors';
-import { ExtractService, translatableLength } from '../src/article/extract.service';
+import {
+  ExtractService,
+  isCodeLangLabel,
+  translatableLength,
+} from '../src/article/extract.service';
 import type { Block } from '../src/article/extract.service';
 
 /**
@@ -178,6 +183,122 @@ describe('extract：块契约（前端靠它做左右对齐与译文回填）', 
   it('页面的导航与页脚不出现在正文里', () => {
     const all = blocks.map(textOf).join('\n');
     expect(all).not.toContain('版权所有 2026');
+  });
+});
+
+// ============================================================================
+
+describe('extract：代码块上方的语言标签（会被误当正文送去翻译）', () => {
+  /**
+   * 复刻线上遇到的形状。MDN 的代码块上方有一行语言名：
+   *
+   *   <div class="code-example">
+   *     <div class="example-header"><span class="language-name">js</span></div>
+   *     <pre class="brush: js"><code>…</code></pre>
+   *   </div>
+   *
+   * Readability 在真实页面上会把 `example-header` 那个 div **改写成 `<p>`**（同时剥掉所有 class），
+   * 于是 `<pre>` 前面凭空多出一段 `<p>js</p>`；它被当成普通段落发去翻译，
+   * 模型看到孤零零一个 `js`，就译成了 "JavaScript"。
+   *
+   * 但 fixture 里**不能照抄原始那层 div**：在这么小的文档里，Readability 会因为
+   * `example-header` 命中它的 unlikely 名单而把整个 div 删掉，`js` 根本不出现 ——
+   * 用例就成了假过（实测踩过这个坑）。所以直接写它**改写之后的形态**。
+   */
+  function codeFixture(label: string, extra = ''): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Doc</title></head>
+<body>
+  <article>
+    <h1>Doc</h1>
+    ${BODY_PARAGRAPHS}
+    <p class="language-name">${label}</p>
+    <pre class="brush: ${label}"><code>const a = 1;</code></pre>
+    ${extra}
+    <p>Closing paragraph so the article does not end on a code block.</p>
+  </article>
+</body>
+</html>`;
+  }
+
+  const textsOf = (html: string): string[] => extract(html).blocks.map(textOf);
+
+  /** 造最小 DOM：`<div><p>…</p><pre>…</pre></div>`（或把 pre 换成一个普通段落） */
+  function domWith(label: string, { preNext = true } = {}) {
+    const html = preNext
+      ? `<div><p><span>${label}</span></p><pre><code>x</code></pre></div>`
+      : `<div><p><span>${label}</span></p><p>另一个段落</p></div>`;
+    return { p: new JSDOM(html).window.document.querySelector('p')!, text: label };
+  }
+
+  // ---- 判据本身：直接打 isCodeLangLabel，比走一遍 Readability 可控 ----
+
+  it('语言名 + 紧挨着 pre → 判为标签', () => {
+    for (const label of ['js', 'python', 'bash', 'go', 'rust', 'TypeScript', 'C++']) {
+      const { p, text } = domWith(label);
+      expect(isCodeLangLabel(p, text), `${label} 应判为标签`).toBe(true);
+    }
+  });
+
+  it('是语言名但不挨着 pre → 不算（正文里真可能出现一段 `<p>Rust</p>`）', () => {
+    const { p, text } = domWith('Rust', { preNext: false });
+    expect(isCodeLangLabel(p, text)).toBe(false);
+  });
+
+  it('挨着 pre 但不在白名单里 → 不算（短段落不能一律吞掉）', () => {
+    const { p } = domWith('Note');
+    expect(isCodeLangLabel(p, 'Note')).toBe(false);
+    expect(isCodeLangLabel(p, 'This is a short sentence.')).toBe(false);
+  });
+
+  it('以语言名开头的长文本不算', () => {
+    const { p } = domWith('js');
+    expect(isCodeLangLabel(p, 'js is a programming language')).toBe(false);
+  });
+
+  // ---- 走完整提取链路 ----
+
+  it('MDN 形状的语言标签不会出现在正文块里', () => {
+    expect(textsOf(codeFixture('js'))).not.toContain('js');
+  });
+
+  it('不是只给 `js` 打补丁，别的语言名同样处理', () => {
+    for (const label of ['python', 'bash', 'go', 'rust']) {
+      expect(textsOf(codeFixture(label)), `${label} 没被过滤`).not.toContain(label);
+    }
+  });
+
+  it('过滤标签时不能把代码块一起吞了', () => {
+    const pre = findByType(extract(codeFixture('js')).blocks, 'pre');
+    expect(pre).toHaveLength(1);
+    expect(pre[0].text).toContain('const a = 1;');
+  });
+
+  it('丢标签后 id 依然从 1 连续（前端靠 id 对齐）', () => {
+    const { blocks } = extract(codeFixture('js'));
+    expect(blocks.map((b) => b.id)).toEqual(blocks.map((_, i) => i + 1));
+  });
+
+  it('白名单外的短段落紧挨着代码块也要留下', () => {
+    expect(textsOf(codeFixture('js', '<p>Note</p>'))).toContain('Note');
+  });
+
+  it('是语言名但离代码块很远 → 留下', () => {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Doc</title></head>
+<body>
+  <article>
+    <h1>Doc</h1>
+    ${BODY_PARAGRAPHS}
+    <p>Rust</p>
+    <p>Closing paragraph so the article does not end on a code block.</p>
+    <pre><code>fn main() {}</code></pre>
+  </article>
+</body>
+</html>`;
+    expect(textsOf(html)).toContain('Rust');
   });
 });
 

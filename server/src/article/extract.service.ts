@@ -92,6 +92,44 @@ const HEURISTIC_SELECTORS = [
   '#content',
 ];
 
+/**
+ * 代码语言标签的白名单（一律小写）。
+ *
+ * 不少技术站点会在代码块上方标一行语言名（MDN 是 `js`，别的站点是 `python` / `bash` …）。
+ * Readability 会把承载它的那个容器改写成 `<p>js</p>`，于是它作为普通段落混进正文，
+ * 还会被发去翻译 —— 模型看到一个孤零零的 `js`，往往自作主张译成 "JavaScript" 之类的词。
+ * 它只是代码块的装饰性标注，对读者没有任何信息量。
+ *
+ * 不追求把世界上所有语言名列全：**漏掉的代价只是多留一行标签**，
+ * 而列表越长，"正文里恰好出现一个同名短词、又刚好挨着代码块"被误伤的概率越大。
+ */
+const CODE_LANG_LABELS = new Set([
+  // 前端
+  'js', 'javascript', 'ts', 'typescript', 'jsx', 'tsx', 'mjs', 'cjs',
+  'html', 'htm', 'css', 'scss', 'sass', 'less', 'vue', 'svelte', 'astro',
+  // 数据 / 配置
+  'json', 'jsonc', 'json5', 'xml', 'yaml', 'yml', 'toml', 'ini', 'csv', 'env', 'dotenv',
+  // 文档标记
+  'md', 'markdown', 'rst', 'tex', 'latex',
+  // 命令行
+  'sh', 'bash', 'shell', 'zsh', 'fish', 'powershell', 'ps1', 'bat', 'cmd', 'console', 'terminal',
+  // 后端语言
+  'py', 'python', 'rb', 'ruby', 'php', 'java', 'kt', 'kotlin', 'scala', 'groovy',
+  'go', 'golang', 'rs', 'rust', 'c', 'cpp', 'c++', 'cs', 'csharp', 'swift', 'dart', 'lua', 'perl', 'r', 'julia', 'matlab',
+  // 数据 / 工程
+  'sql', 'plsql', 'tsql', 'graphql', 'gql', 'prisma',
+  'dockerfile', 'docker', 'makefile', 'cmake', 'nginx', 'htaccess', 'git',
+  // 其它常见
+  'text', 'txt', 'plain', 'plaintext', 'diff', 'patch', 'log', 'http', 'regex',
+  'zig', 'nim', 'elm', 'clojure', 'clj', 'erlang', 'elixir', 'ex', 'haskell', 'hs', 'ocaml', 'lisp', 'scheme', 'prolog',
+  'wasm', 'asm', 'nasm', 'glsl', 'hlsl', 'svg', 'proto',
+  'jinja', 'jinja2', 'handlebars', 'hbs', 'ejs', 'pug', 'twig', 'liquid', 'mustache',
+  'objc', 'objectivec', 'abap', 'apex', 'solidity', 'vba', 'vb', 'pascal', 'fortran', 'cobol',
+]);
+
+/** 语言标签不会长过这个长度（最长的 `objectivec` / `dockerfile` 也就 10 个字符） */
+const MAX_CODE_LANG_LABEL_CHARS = 16;
+
 @Injectable()
 export class ExtractService {
   private readonly logger = new Logger(ExtractService.name);
@@ -311,7 +349,10 @@ function buildBlocks(root: Element, baseUrl?: string): Block[] {
     // ---- 段落 ----
     if (tag === 'p') {
       const text = clean(el.textContent);
-      if (text) push({ type: 'p', text, translatable: true });
+      // 代码块上方的语言标签（`<p>js</p>` 紧挨着 `<pre>`）不是正文，见 isCodeLangLabel
+      if (text && !isCodeLangLabel(el, text)) {
+        push({ type: 'p', text, translatable: true });
+      }
       return;
     }
 
@@ -411,6 +452,47 @@ export function translatableLength(blocks: Block[]): number {
 
 function isGoodEnough(blocks: Block[]): boolean {
   return translatableLength(blocks) >= MIN_ARTICLE_CHARS;
+}
+
+/**
+ * 判断一个 `<p>` 是不是"代码块上方的语言标签"。
+ *
+ * 三个条件同时成立才算：
+ *   1. 文本很短且是单行 —— 语言标签就是一个词；
+ *   2. 文本在语言名白名单里；
+ *   3. 它的**紧邻兄弟**里有一个 `<pre>`。
+ *
+ * 第 3 条是关键。只看前两条的话，正文里恰好出现一个短词（比如一段独立的 `<p>C</p>`）
+ * 就会被误吞；要求它贴着代码块，才契合"这是代码块的一部分"这个语义。
+ *
+ * 为什么不用 `class` 认（`language-name` / `brush: js` 这些都在 class 里）：
+ * Readability 会把它们**全部剥掉**（技术方案 §11 已知限制），到这里只剩形状可认。
+ *
+ * 导出是为了单测能直接打这个判据（它靠 DOM 邻近关系，比走一遍 Readability 更可控）。
+ */
+export function isCodeLangLabel(el: Element, text: string): boolean {
+  if (text.length > MAX_CODE_LANG_LABEL_CHARS) return false;
+  if (/\s/.test(text)) return false; // 语言标签是一个词，不含任何空白
+  if (!CODE_LANG_LABELS.has(text.toLowerCase())) return false;
+  return neighbourTag(el, 'next') === 'pre' || neighbourTag(el, 'prev') === 'pre';
+}
+
+/**
+ * 找元素的"下一个 / 上一个有文本的兄弟"的标签名，本级找不到就顺着祖先往上找。
+ *
+ * 不能只看 `el.nextElementSibling`：语言标签和 `<pre>` 之间常隔着一层 wrapper。
+ * MDN 的情况恰好是兄弟（`<div class="example-header">` 被 Readability 改写成 `<p>` 后
+ * 与 `<pre>` 同级），但别的站点未必这么巧，所以往上冒泡一层更稳。
+ */
+function neighbourTag(el: Element, dir: 'next' | 'prev'): string | null {
+  for (let node: Element | null = el; node; node = node.parentElement) {
+    let sib = dir === 'next' ? node.nextElementSibling : node.previousElementSibling;
+    while (sib && !(sib.textContent ?? '').trim()) {
+      sib = dir === 'next' ? sib.nextElementSibling : sib.previousElementSibling;
+    }
+    if (sib) return sib.tagName.toLowerCase();
+  }
+  return null;
 }
 
 /** 从 class 里猜代码语言，用于前端语法高亮与展示 */
