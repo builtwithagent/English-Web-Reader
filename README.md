@@ -2,7 +2,7 @@
 
 **Read English web pages bilingually.** Paste a URL, get a clean two-column reading view — original on the left, translation on the right, aligned block by block in real time.
 
-![The reading view: English on the left, the Chinese translation filling in block by block on the right](docs/demo.gif)
+![Pasting an English article URL, then watching it open as a two-column reading view with the Chinese translation filling in block by block](docs/demo.gif)
 
 ---
 
