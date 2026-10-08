@@ -101,6 +101,7 @@ select { font-family: inherit; cursor: pointer; }
 
 /* 语言对：源语言锁英文（垂直定位的体现），译文语言可选 10 种 */
 .lang-pair {
+  position: relative;               /* 浮层的定位基准 */
   display: inline-flex; align-items: center; gap: 5px;
   height: 30px; padding: 0 9px 0 12px;
   background: var(--accent-soft); border: 1px solid var(--accent-line);
@@ -109,14 +110,51 @@ select { font-family: inherit; cursor: pointer; }
 }
 .lang-pair b { font-weight: 650; }
 .lang-pair i { font-style: normal; opacity: .55; }
-.lang-pair select {
-  appearance: none; -webkit-appearance: none;
-  background: transparent; border: none; outline: none; padding: 0;
-  color: var(--accent); font-family: inherit; font-size: 12px;
-  font-weight: 650; cursor: pointer; max-width: 112px;
+
+/* 触发按钮。刻意做成"没有按钮样"—— 视觉上它仍是胶囊里的一段文字，
+   但语义上是按钮，所以键盘能 Tab 到、能回车展开。 */
+.lang-pair .lang-trigger {
+  appearance: none; background: transparent; border: none; outline: none; padding: 0;
+  color: var(--accent); font: inherit; font-size: 12px; font-weight: 650;
+  cursor: pointer; max-width: 112px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.lang-pair .caret { font-size: 9px; opacity: .6; }
-html[data-theme="dark"] .lang-pair select option { background: #161b22; color: #e6edf3; }
+.lang-pair .lang-trigger:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px;
+}
+.lang-pair .caret { font-size: 9px; opacity: .6; transition: transform .16s ease; }
+.lang-pair.open .caret { transform: rotate(180deg); }
+
+/* 语言浮层。
+   常驻 DOM、只切 display —— 这样选项在无障碍树里的进出是干净的
+   （display:none 不可聚焦），自动化脚本也能稳定数到位数。
+   配色全部走主题变量，深色模式自动跟随，不需要单独写一份。 */
+.lang-menu {
+  display: none;
+  position: absolute; top: calc(100% + 7px); left: 0; z-index: 60;
+  min-width: 100%; width: max-content;
+  padding: 5px;
+  flex-direction: column; gap: 1px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.lang-menu.open { display: flex; animation: langPop .14s cubic-bezier(.2, .8, .3, 1); }
+@keyframes langPop { from { opacity: 0; transform: translateY(-5px) scale(.98); } }
+
+.lang-option {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 7px 10px;
+  background: transparent; border: none; border-radius: 8px;
+  color: var(--text-soft); font: inherit; font-size: 13px; font-weight: 500;
+  text-align: left; white-space: nowrap; cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.lang-option:hover { background: var(--hover); color: var(--text); }
+.lang-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.lang-option.on { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+.lang-option.on::after { content: "✓"; margin-left: auto; font-size: 11px; }
 
 /* ============ 初始态 ============ */
 .landing {
@@ -417,7 +455,8 @@ html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: 
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sk-line, .toast { animation: none; }
+  .sk-line, .toast, .lang-menu.open { animation: none; }
+  .lang-pair .caret { transition: none; }
 }
 
 /* ============ 响应式 ============ */

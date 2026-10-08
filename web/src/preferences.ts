@@ -85,8 +85,8 @@ export function isDisplayMode(v: unknown): v is DisplayMode {
  * 目标语言的合法性校验。
  *
  * 别省这一步：localStorage 里可能留着旧版本写的值（比如列表改版前存在的 `en`）。
- * 直接采纳的话，`<select value="en">` 找不到对应 option，**界面上会显示成空白**，
- * 而请求照样发出去 —— 用户看到的是"语言选择器空着，但右边在出中文"。
+ * 直接采纳的话，选择器会顶着一个**列表里根本没有**的语言名，选中态也无处安放 ——
+ * 而请求照样发出去，用户看到的是"选择器写着 English，右边却在出中文"。
  * 后端有 `normalizeTargetLang` 兜底，前端也得自己兜住。
  */
 export function isTargetLang(v: unknown): v is TargetLang {

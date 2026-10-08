@@ -76,7 +76,6 @@ const CASES = [
 /** 把页面的实测状态取回来（经 JSON 字符串往返 —— CDP 对复杂返回值的序列化有限制） */
 async function measure(cdp) {
   const meta = await cdp.evalJson(`JSON.stringify({
-    langs: document.querySelectorAll('.lang-pair option').length,
     cells: document.querySelectorAll('.cell').length,
     src: document.querySelectorAll('.col-src').length,
     dst: document.querySelectorAll('.col-dst').length,
@@ -194,7 +193,39 @@ async function measure(cdp) {
     };
   })())`);
 
-  return { meta, align, sharedMask, translation };
+  // 语言浮层的开合（技术方案 7.2）。
+  // 从原生 `<select>` 换成自绘浮层之后，"展开"从**浏览器行为**变成了**我们的代码**，
+  // 所以必须看住它 —— 光是数选项数量，开合逻辑整个坏掉也照样通过。
+  // 顺便取当前值：偏好用例要靠它验证"刷新后语言还在"。
+  const langMenu = await cdp.evalJson(`JSON.stringify({
+    count: document.querySelectorAll('.lang-menu .lang-option').length,
+    current: document.querySelector('.lang-trigger')?.dataset.value,
+  })`);
+
+  await cdp.eval(`document.querySelector('.lang-trigger')?.click()`);
+  await new Promise((r) => setTimeout(r, 150));
+  const opened = await cdp.evalJson(`JSON.stringify((() => {
+    const pane = document.querySelector('.lang-menu');
+    const r = pane?.getBoundingClientRect();
+    return {
+      visible: !!r && r.width > 0 && r.height > 0,
+      expanded: document.querySelector('.lang-trigger')?.getAttribute('aria-expanded'),
+    };
+  })())`);
+  // 再点一下收回去，别影响后面的截图
+  await cdp.eval(`document.querySelector('.lang-trigger')?.click()`);
+  await new Promise((r) => setTimeout(r, 150));
+  const collapsed = await cdp.eval(
+    `document.querySelector('.lang-trigger')?.getAttribute('aria-expanded') === 'false'`,
+  );
+
+  return {
+    meta,
+    align,
+    sharedMask,
+    translation,
+    langMenu: { ...langMenu, opened: opened?.visible === true && opened?.expanded === 'true', collapsed },
+  };
 }
 
 /**
@@ -207,14 +238,26 @@ async function measure(cdp) {
  * 旧译文是「【简体中文】」，只要有任何一格还留着它，`every` 就不成立。
  */
 async function switchLangAndWait(cdp, lang, marker) {
-  const applied = await cdp.eval(`(() => {
-    const sel = document.querySelector('.lang-pair select');
-    if (!sel) return false;
-    sel.value = ${JSON.stringify(lang)};
-    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  // 自绘浮层没有 `select.value = … + dispatchEvent('change')` 这条捷径了，
+  // 得像真人一样点两下：先展开浮层，再点中那一项。
+  const opened = await cdp.eval(`(() => {
+    const t = document.querySelector('.lang-trigger');
+    if (!t) return false;
+    if (t.getAttribute('aria-expanded') !== 'true') t.click();
     return true;
   })()`);
-  if (!applied) return { ok: false, detail: '找不到语言选择器' };
+  if (!opened) return { ok: false, detail: '找不到语言选择器' };
+  await new Promise((r) => setTimeout(r, 150));
+
+  const applied = await cdp.eval(
+    `(() => {
+      const o = document.querySelector('.lang-menu .lang-option[data-value="${lang}"]');
+      if (!o) return false;
+      o.click();
+      return true;
+    })()`,
+  );
+  if (!applied) return { ok: false, detail: `浮层里没有 ${lang} 这一项` };
 
   const ok = await waitUntil(
     cdp,
@@ -312,7 +355,7 @@ async function checkPreferences(cdp) {
     fontSize: document.documentElement.style.getPropertyValue('--reading-font-size'),
     theme: document.documentElement.dataset.theme,
     mode: document.querySelector('.grid')?.dataset.mode,
-    lang: document.querySelector('.lang-pair select')?.value,
+    lang: document.querySelector('.lang-trigger')?.dataset.value,
     stored: localStorage.getItem('ewr_preferences'),
   })`;
 
@@ -547,8 +590,8 @@ async function main() {
         continue;
       }
 
-      const { meta: m, align: a, sharedMask: s, translation: t } = await measure(chrome.cdp);
-      if (!m || !a || !s || !t) {
+      const { meta: m, align: a, sharedMask: s, translation: t, langMenu: lm } = await measure(chrome.cdp);
+      if (!m || !a || !s || !t || !lm) {
         console.log(`✗ ${c.name}：页面状态读不回来`);
         failed++;
         continue;
@@ -556,7 +599,8 @@ async function main() {
 
       const degraded = c.name.includes('降级');
       const checks = [
-        ['语言选项 10 项', m.langs === 10],
+        ['语言选项 10 项', lm.count === 10],
+        ['语言浮层能开能收', lm.opened === true && lm.collapsed === true],
         ['块已渲染', m.cells > 0],
         degraded ? ['未渲染译文列', m.dst === 0] : ['译文列已渲染', m.dst > 0],
         degraded ? ['隐藏模式切换', m.modeSwitch === false] : ['显示模式切换', m.modeSwitch === true],
