@@ -6,7 +6,7 @@
 
 ## Getting started
 
-Requires **Node 22+**. No database, no cloud account.
+Requires **Node 22+**.
 
 ### 1. Backend
 
