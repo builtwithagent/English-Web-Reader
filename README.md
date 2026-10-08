@@ -20,17 +20,11 @@ npm start                   # http://localhost:3000
 
 ### 2. Frontend
 
-In a second terminal:
-
 ```bash
 cd web
 npm install
 npm run dev                 # http://localhost:5173
 ```
-
-Open **http://localhost:5173** — use `localhost`, not `127.0.0.1`: Vite binds to the IPv6 loopback by default. During development Vite proxies `/api/*` to the backend, so the frontend only ever calls same-origin relative paths.
-
-For a quick look without pasting anything, append `?url=https://…` to go straight into the reading view.
 
 ### Configuration
 
