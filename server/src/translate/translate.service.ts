@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { MIN_SAMPLE_CHARS, detectPageLang } from '../common/lang';
 import { AppError, type ErrorCode } from '../common/errors';
+import type { LimitTicket, RateLimiter } from '../common/rate-limit';
 import { LlmService } from './llm.service';
 import { buildSystemPrompt, normalizeTargetLang } from './langs';
+import { TRANSLATE_LIMITS, limitError } from './translate.limits';
 import {
   CONCURRENCY,
   MAX_ATTEMPTS,
@@ -37,7 +39,12 @@ export type TranslateEvent =
 export class TranslateService {
   private readonly logger = new Logger(TranslateService.name);
 
-  constructor(private readonly llm: LlmService) {}
+  constructor(
+    private readonly llm: LlmService,
+    // token 注入而不是按类型注入：`emitDecoratorMetadata` 下写 `RateLimiter`
+    // 会被当成"去容器里找一个叫 RateLimiter 的 provider"，而它是带构造参数的工厂产物
+    @Inject(TRANSLATE_LIMITS) private readonly limits: RateLimiter,
+  ) {}
 
   /**
    * 发流**之前**能做完的所有检查。
@@ -45,8 +52,11 @@ export class TranslateService {
    * 单独拎出来是因为 SSE 有个不可逆的时点：一旦 `flushHeaders()`，
    * 状态码就定死了，此时再失败也没法退回一个干净的 JSON 错误 —— 只能在流里塞错误事件。
    * 所以凡是能在流之前判死的，必须在这里判死。
+   *
+   * 返回的是**额度预扣凭据**（没扣到就是 null）。调用方留着它，
+   * 在"整体失败、一块都没交付"时用来 `refund()`。
    */
-  preflight(dto: TranslateRequestDto): void {
+  preflight(dto: TranslateRequestDto, ip: string): LimitTicket | null {
     // 1) 凭证。没有密钥就没必要往后走，也不该让用户等到超时才看到失败
     if (!this.llm.hasApiKey) {
       throw new AppError('translate_auth_failed');
@@ -67,6 +77,44 @@ export class TranslateService {
       );
       throw new AppError('source_not_english');
     }
+
+    // 3) 额度闸门（技术方案 7.8.1）—— 同样零上游调用
+    //
+    // 放在**语言闸门之后**，顺序是有意的：被语言闸门拦下的请求一块都不该扣。
+    // 反过来先扣额度再判语言，等于"判断不了的文章也记账"，而那道闸门挡下的量
+    // （有人拿中文页试）在统计里并不小。
+    //
+    // 计费的量是**可译块数**而不是 `blocks.length`：真正发出去的上游请求数
+    // 由 `needsTranslation` 过滤之后才定（见下面的 translate()），
+    // 按 blocks.length 收会把图片块、纯符号行这些本来就跳过的也算进去。
+    const billable = dto.blocks.filter((block) => needsTranslation(block.text)).length;
+    const limitVerdict = this.limits.take(ip, billable);
+    if (!limitVerdict.ok) {
+      const spec = this.limits.spec;
+      // 被拦时把三个数一起打出来：能一眼分辨"闸门设小了"（该 IP 用量远小于上限）
+      // 和"真的有人在刷"（某个 IP 顶到上限、或者全站额度见底）
+      this.logger.warn(
+        `额度闸门拦截：${limitVerdict.reason}（ip=${ip} 本次 ${billable} 块 · ` +
+          `全站今日 ${this.limits.usage().globalUnits}/${spec.globalPerDay} · ` +
+          `该 IP 今日 ${this.limits.usedToday(ip)}/${spec.perIpPerDay}）`,
+      );
+      throw limitError(limitVerdict.reason, spec, limitVerdict.retryAfterSec);
+    }
+
+    return limitVerdict.ticket;
+  }
+
+  /**
+   * 回滚一次预扣 —— 只在"整体失败、一块都没交付"时调用。
+   *
+   * 三种情况**刻意不退**，因为额度已经被真实花掉了：
+   * 1. 客户端中途关掉标签页（用户不看了，但并发池已经发出去的块回不来）；
+   * 2. 单块失败（那是逐块独立的，其余块照常翻完了）；
+   * 3. 流正常跑完。
+   * 分钟窗口一律不退（理由见 common/rate-limit.ts 的 refund）。
+   */
+  refund(ticket: LimitTicket | null): void {
+    this.limits.refund(ticket);
   }
 
   /**

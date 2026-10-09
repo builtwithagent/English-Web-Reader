@@ -10,6 +10,9 @@ export type ErrorCode =
   // ---- 请求侧 ----
   | 'invalid_request'
   | 'not_found'
+  // ---- 限流（抓取与翻译共用）----
+  | 'too_many_requests'
+  | 'daily_limit_reached'
   // ---- 抓取侧（技术方案 4.6）----
   | 'invalid_url'
   | 'unsupported_protocol'
@@ -56,6 +59,27 @@ export const ERROR_SPEC: Record<ErrorCode, ErrorSpec> = {
   not_found: {
     status: 404,
     message: '这个接口不存在',
+  },
+  // ---- 限流（见 common/rate-limit.ts）----
+  //
+  // ⚠️ 这两个码讲的是**我们自己的闸门**，与上面的 `translate_rate_limited` 不是一回事：
+  // 那个是"上游把我们的请求限流了"（等一下重试确实有意义，所以后端会自动重试一次），
+  // 这个是我们自己拦的（**重试没有任何用**，只会把频率限制撞得更响）。
+  // 分开还有个实际原因：`translate_rate_limited` 是 5.6 节定给上游的码，
+  // 前端已经在按它做重试相关的展示，混进来会让"要不要再试一次"变成猜。
+  too_many_requests: {
+    status: 429,
+    message: '请求太频繁，请稍后再试',
+  },
+  // 日额度用尽是**另一个处境**：不是"等一下就好"，而是"今天没有了"。
+  // 共用 too_many_requests 的话，那句固定文案必然对其中一种说谎；
+  // 所以宁可多一个码，让说法和现实对得上。
+  //
+  // 文案刻意**不写"翻译"** —— 抓取那条链路也用它。具体是翻译额度还是抓取额度、
+  // 上限多少、什么时候恢复，全在 hint 里（由各自的 limits 文件生成）。
+  daily_limit_reached: {
+    status: 429,
+    message: '今天的额度已用完',
   },
   invalid_url: {
     status: 400,

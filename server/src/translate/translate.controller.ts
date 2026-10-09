@@ -1,8 +1,11 @@
-import { Body, Controller, Logger, Post, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Body, Controller, Logger, Post, Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AppError } from '../common/errors';
+import { clientIp } from '../common/ip';
+import type { LimitTicket } from '../common/rate-limit';
 import { StatsService } from '../stats/stats.service';
-import { urlKey } from '../stats/stats.types';import { normalizeTargetLang } from './langs';
+import { urlKey } from '../stats/stats.types';
+import { normalizeTargetLang } from './langs';
 import { TranslateRequestDto } from './translate.dto';
 import { TranslateService } from './translate.service';
 
@@ -24,14 +27,23 @@ export class TranslateController {
   ) {}
 
   @Post()
-  async translate(@Body() dto: TranslateRequestDto, @Res() res: Response): Promise<void> {
+  async translate(
+    @Body() dto: TranslateRequestDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
     // 前置检查必须在写头之前跑完。一 flushHeaders() 状态码就定死，
     // 此时再抛错只能往流里塞一个错误事件，而前端拿到的 HTTP 状态还是 200。
+    //
+    // 拿到的是额度预扣凭据。这一层必须持有它 —— 只有这里知道"整条流是不是真的跑成了"，
+    // 也就只有这里能决定什么时候该退。
+    let ticket: LimitTicket | null = null;
     try {
-      this.translateService.preflight(dto);
+      ticket = this.translateService.preflight(dto, clientIp(req));
     } catch (err) {
       // 被挡下的请求也要记：它反映"有多少人在拿非英文页试"，
-      // 是判断要不要放宽语言闸门的唯一依据。
+      // 是判断要不要放宽语言闸门的唯一依据。限流那两个码走的也是这条路 ——
+      // 于是看板上能直接看到"闸门拦了多少次"，而不只是"有闸门"。
       this.stats.recordTranslateReject(err instanceof AppError ? err.code : 'internal_error');
       throw err;
     }
@@ -73,6 +85,10 @@ export class TranslateController {
       // 能走到这里的只有**整体性**故障（单块失败是普通事件，不会抛）。
       // 此时头已经发出去了，只能把错误当成一条流事件交给前端。
       const appError = err instanceof AppError ? err : new AppError('internal_error');
+      // 整体失败 = 一块都没能交付给用户，预扣的额度退回去。
+      // （客户端中途断开**不在这里** —— 那条路是 break 出来的，没有异常，
+      //   而那时候上游调用确实已经发出去了，不该退。）
+      this.translateService.refund(ticket);
       this.logger.error(
         `翻译流出错：${appError.code}`,
         err instanceof Error ? err.stack : undefined,

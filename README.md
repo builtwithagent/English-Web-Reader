@@ -50,6 +50,7 @@ All backend configuration lives in `server/.env`. The upstream is addressed with
 | `LLM_TIMEOUT_MS` | no | `30000` | Per-block timeout |
 | `STATS_PASSWORD` | no | — | Turns on `GET /api/stats`, the JSON behind the `/stats` dashboard. Leaving it empty keeps that endpoint **off** (503), not unprotected. It doubles as the dashboard's own login |
 | `STATS_USER` | no | `admin` | Only used by the `Authorization: Basic` path; the dashboard itself asks for the password alone |
+| `TRANSLATE_*`, `ARTICLE_*` | no | see `.env.example` | Quota gates that keep the upstream budget from being drained: requests per minute, blocks per IP per day, and a **global** daily ceiling (the only one that holds when the caller rotates IPs). `0` switches a gate off; blank or non-numeric falls back to the default. Effective values are logged at startup |
 
 Without a key the translation endpoint refuses at the door; fetching, reading and exporting keep working.
 
@@ -67,8 +68,8 @@ Testing is split into three layers on purpose, each answering a different questi
 
 ```bash
 # 1. Offline logic — fast, no network, no LLM quota
-cd server && npm test        # 262 checks
-cd web    && npm test        # 138 checks
+cd server && npm test        # 317 checks
+cd web    && npm test        # 145 checks
 
 # 2. Real network, real articles — "does the whole chain actually work"
 cd server && npm run smoke             # fetch / extract / language / SSRF, 16 checks

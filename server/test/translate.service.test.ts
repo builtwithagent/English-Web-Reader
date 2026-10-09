@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AppError, type ErrorCode } from '../src/common/errors';
 import { MIN_SAMPLE_CHARS } from '../src/common/lang';
+import { RateLimiter, type LimitSpec } from '../src/common/rate-limit';
 import type { LlmService } from '../src/translate/llm.service';
 import { TranslateService, type TranslateEvent } from '../src/translate/translate.service';
 import type { TranslateRequestDto } from '../src/translate/translate.dto';
@@ -55,8 +56,18 @@ class FakeLlm {
   }
 }
 
-function makeService(llm: FakeLlm): TranslateService {
-  return new TranslateService(llm as unknown as LlmService);
+/**
+ * 默认给一个**全部关掉**的限流器：这个文件要验的是语言闸门与并发编排，
+ * 额度闸门自己有单独的用例（见下面"preflight：额度闸门"那一段与
+ * test/rate-limit.test.ts）—— 混在一起会让"为什么这条挂了"变得难判断。
+ */
+const NO_LIMITS: LimitSpec = { perMinute: 0, perIpPerDay: 0, globalPerDay: 0 };
+
+/** 每个用例固定用一个 IP：限流按 IP 记账，用同一个值才复现得出来 */
+const IP = '203.0.113.7';
+
+function makeService(llm: FakeLlm, spec: LimitSpec = NO_LIMITS): TranslateService {
+  return new TranslateService(llm as unknown as LlmService, new RateLimiter(spec));
 }
 
 function dto(blocks: Array<{ id: number; text: string }>, targetLang = 'zh-Hans'): TranslateRequestDto {
@@ -80,9 +91,13 @@ function idOf(event: TranslateEvent): number {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** 抓出 preflight 抛的错误码 */
-function preflightCode(service: TranslateService, request: TranslateRequestDto): ErrorCode | null {
+function preflightCode(
+  service: TranslateService,
+  request: TranslateRequestDto,
+  ip = IP,
+): ErrorCode | null {
   try {
-    service.preflight(request);
+    service.preflight(request, ip);
     return null;
   } catch (err) {
     expect(err).toBeInstanceOf(AppError);
@@ -125,6 +140,88 @@ describe('preflight：发流之前的闸门', () => {
   it('key 缺失的判定**先于**语言判定（缺 key 时不该报"这不是英文页"）', () => {
     const service = makeService(new FakeLlm(undefined, false));
     expect(preflightCode(service, dto([{ id: 1, text: ZH_TEXT }]))).toBe('translate_auth_failed');
+  });
+});
+
+/**
+ * 额度闸门（技术方案 7.8.1）。
+ *
+ * 这里验的是**编排层怎么用它**（顺序、计费口径、回滚），
+ * 计数本身的正误在 test/rate-limit.test.ts 里。
+ */
+describe('preflight：额度闸门', () => {
+  const en = (id: number) => ({ id, text: EN_TEXT });
+
+  it('每 IP 每天用尽 → daily_limit_reached，且**零上游调用**', () => {
+    const llm = new FakeLlm();
+    const service = makeService(llm, { perMinute: 0, perIpPerDay: 2, globalPerDay: 0 });
+    expect(preflightCode(service, dto([en(1), en(2)]))).toBeNull();
+    expect(preflightCode(service, dto([en(3)]))).toBe('daily_limit_reached');
+    expect(llm.seen).toHaveLength(0);
+  });
+
+  it('每分钟次数用尽 → too_many_requests（**与额度用尽分成两个码**）', () => {
+    // 两种处境不一样："等半分钟"和"今天没了"。共用一个码的话，
+    // 那句固定文案必然对其中一种说谎。
+    const service = makeService(new FakeLlm(), { perMinute: 1, perIpPerDay: 0, globalPerDay: 0 });
+    expect(preflightCode(service, dto([en(1)]))).toBeNull();
+    expect(preflightCode(service, dto([en(2)]))).toBe('too_many_requests');
+  });
+
+  it('计费的是**可译块数**：不可译的块不占额度', () => {
+    const service = makeService(new FakeLlm(), { perMinute: 0, perIpPerDay: 2, globalPerDay: 0 });
+    const mixed = dto([
+      { id: 1, text: '2026-10-10' }, // 没有字母
+      { id: 2, text: '—' },
+      { id: 3, text: EN_TEXT },
+      { id: 4, text: EN_TEXT },
+    ]);
+    // 4 个块里只有 2 个会被真发出去 → 正好占满 2 个单位。
+    // （如果按 blocks.length 计费，这一句就已经被拦了。）
+    expect(preflightCode(service, mixed)).toBeNull();
+    expect(preflightCode(service, dto([en(5)]))).toBe('daily_limit_reached');
+  });
+
+  it('全站日额度是**跨 IP** 的总闸：前两道全关掉也拦得住', () => {
+    // 这条是"保钱"的最后一道 —— XFF 可以伪造，所以每 IP 的限制对
+    // 铁了心刷的人等于没有，只有这一道拦得住。
+    const service = makeService(new FakeLlm(), { perMinute: 0, perIpPerDay: 0, globalPerDay: 1 });
+    expect(preflightCode(service, dto([en(1)]))).toBeNull();
+    expect(preflightCode(service, dto([en(2)]), '198.51.100.9')).toBe('daily_limit_reached');
+  });
+
+  it('被**语言闸门**拦下的请求不扣额度（顺序：语言判定在预扣之前）', () => {
+    // 拿中文页试的人不应该把额度吃掉 —— 那道闸门挡下的量在统计里并不小，
+    // 顺序反了的话"判断不了的文章"也会记账。
+    const service = makeService(new FakeLlm(), { perMinute: 0, perIpPerDay: 1, globalPerDay: 0 });
+    for (let i = 0; i < 5; i++) {
+      expect(preflightCode(service, dto([{ id: 1, text: ZH_TEXT }]))).toBe('source_not_english');
+    }
+    expect(preflightCode(service, dto([en(1)]))).toBeNull();
+  });
+
+  it('refund 把预扣退回来之后额度可以再花', () => {
+    const service = makeService(new FakeLlm(), { perMinute: 0, perIpPerDay: 2, globalPerDay: 0 });
+    const ticket = service.preflight(dto([en(1), en(2)]), IP);
+    expect(preflightCode(service, dto([en(3)]))).toBe('daily_limit_reached');
+
+    service.refund(ticket);
+    expect(preflightCode(service, dto([en(3)]))).toBeNull();
+  });
+
+  it('refund(null) 不炸（没有预扣的时候不该要求调用方先判空）', () => {
+    const service = makeService(new FakeLlm());
+    expect(() => service.refund(null)).not.toThrow();
+  });
+
+  it('preflight 返回的凭据带着扣账明细，供调用方决定要不要退', () => {
+    const service = makeService(new FakeLlm(), { perMinute: 0, perIpPerDay: 5, globalPerDay: 0 });
+    const ticket = service.preflight(dto([en(1), en(2)]), IP);
+    expect(ticket).not.toBeNull();
+    expect(ticket!.units).toBe(2);
+    // 全站那道关着 —— 回滚时不能去减一个从没扣过的账（减了会变负数）
+    expect(ticket!.chargedIpDay).toBe(true);
+    expect(ticket!.chargedGlobal).toBe(false);
   });
 });
 

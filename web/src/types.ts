@@ -194,6 +194,9 @@ export type ErrorCode =
   // ---- 请求侧 ----
   | 'invalid_request'
   | 'not_found'
+  // ---- 限流（抓取与翻译共用，见 server/src/common/rate-limit.ts）----
+  | 'too_many_requests'
+  | 'daily_limit_reached'
   // ---- 抓取侧 ----
   | 'invalid_url'
   | 'unsupported_protocol'

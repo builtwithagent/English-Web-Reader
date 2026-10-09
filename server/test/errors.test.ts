@@ -16,6 +16,7 @@ const EXPECTED_CODES = [
   'blocked_by_site',
   'blocked_target',
   'connection_reset',
+  'daily_limit_reached',
   'dns_failed',
   'extract_failed',
   'internal_error',
@@ -31,6 +32,7 @@ const EXPECTED_CODES = [
   'stats_unauthorized',
   'timeout',
   'too_many_redirects',
+  'too_many_requests',
   'translate_auth_failed',
   'translate_quota',
   'translate_rate_limited',
@@ -67,6 +69,17 @@ describe('ERROR_SPEC：归一口径（改回去就是 bug）', () => {
 
   it('限流保留 429（它是唯一"等一下有用"的翻译错误）', () => {
     expect(ERROR_SPEC.translate_rate_limited.status).toBe(429);
+  });
+
+  it('我们自己的两道闸门与上游限流**必须是三个不同的码**', () => {
+    // `translate_rate_limited` 讲的是"上游把我们限流了"（后端会自动重试一次），
+    // 我们自己的闸门拦下来是**重试没有用**的。合成一个码的话，
+    // 前端就再也分不清"该不该再试一次"，只能猜。
+    expect(ERROR_SPEC.too_many_requests.status).toBe(429);
+    expect(ERROR_SPEC.daily_limit_reached.status).toBe(429);
+    expect(ERROR_SPEC.too_many_requests.message).not.toBe(ERROR_SPEC.translate_rate_limited.message);
+    // 频率问题与额度问题是两种处境（"等半分钟" vs "今天没了"），说法也不能一样
+    expect(ERROR_SPEC.daily_limit_reached.message).not.toBe(ERROR_SPEC.too_many_requests.message);
   });
 
   it('超时用 504，且与 translation 侧的其它失败区分开', () => {
