@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barWidth, formatLocalClock, formatLocalTime, formatNumber, isHttpUrl, topEntries } from './stats';
+import { barWidth, formatLocalClock, formatLocalTime, formatNumber, topEntries } from './stats';
 import { normalizePath } from './router';
 
 /**
@@ -119,28 +119,6 @@ describe('formatLocalClock：明细表只要时分秒', () => {
 
   it('解析不出来给空串，不显示 NaN:NaN', () => {
     expect(formatLocalClock('not-a-date')).toBe('');
-  });
-});
-
-describe('isHttpUrl：能不能当链接打开', () => {
-  it('http / https 可以', () => {
-    expect(isHttpUrl('https://example.com/a')).toBe(true);
-    expect(isHttpUrl('http://example.com/a')).toBe(true);
-  });
-
-  it('有域名就算，哪怕没写协议（浏览器会按相对路径处理，这里按 URL 规则判）', () => {
-    expect(isHttpUrl('https://example.com')).toBe(true);
-  });
-
-  it('**其它协议一律不行** —— 明细里存的是用户原始输入，塞进 href 就是 XSS', () => {
-    expect(isHttpUrl('javascript:alert(1)')).toBe(false);
-    expect(isHttpUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
-    expect(isHttpUrl('file:///etc/passwd')).toBe(false);
-  });
-
-  it('不是 URL 的串不行', () => {
-    expect(isHttpUrl('not a url')).toBe(false);
-    expect(isHttpUrl('')).toBe(false);
   });
 });
 

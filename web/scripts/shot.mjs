@@ -40,13 +40,19 @@ const webRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(webRoot, '..');
 const outDir = path.join(repoRoot, 'docs', 'design');
 
-const NEST_PORT = 3000;
-const VITE_PORT = 5173;
+const NEST_PORT = Number(process.env.SHOT_NEST_PORT ?? 3000);
+const VITE_PORT = Number(process.env.SHOT_VITE_PORT ?? 5173);
 // 用 localhost 而不是 127.0.0.1：Vite 默认绑 localhost，
 // 在 Windows 上它常解析到 IPv6 的 ::1，写死 127.0.0.1 会连不上。
 const SITE = `http://localhost:${VITE_PORT}`;
-const DEBUG_PORT = 9333;
+const DEBUG_PORT = Number(process.env.SHOT_DEBUG_PORT ?? 9333);
 const VIEWPORT = { width: 1440, height: 1400 };
+
+// Vite 那边要靠环境变量才知道代理该打哪个端口（见 vite.config.ts）。
+// 子进程继承 process.env，所以在这里设一次就够 —— 少了这一行，
+// 换了 Nest 端口之后 Vite 依然把 /api 转给 3000，自检会**绿灯打在别人的进程上**。
+process.env.VITE_API_PORT = String(NEST_PORT);
+process.env.VITE_PORT = String(VITE_PORT);
 
 /**
  * 页面就绪的判据。
@@ -219,11 +225,38 @@ async function measure(cdp) {
     `document.querySelector('.lang-trigger')?.getAttribute('aria-expanded') === 'false'`,
   );
 
+  // 原文链接与出处署名（技术方案 7.11）。
+  //
+  // 三个入口（顶部地址条 / 文章头的站点名 / 文末的"查看原文"）各查一次 href：
+  // **它们必须是同一个地址**。光查"链接存在"是不够的 —— 链接存在但指向别处，
+  // 在页面上完全看不出来，而这恰恰是最坏的一种错（读者以为在回原站）。
+  const attribution = await cdp.evalJson(`JSON.stringify((() => {
+    const bar = document.querySelector('.mini-url a');
+    const headLink = document.querySelector('.art-meta a.to-src');
+    const foot = document.querySelector('.art-foot');
+    const footLink = foot?.querySelector('a.to-src');
+    return {
+      barHref: bar?.getAttribute('href') ?? null,
+      barText: bar?.textContent?.trim() ?? null,
+      barTarget: bar?.getAttribute('target') ?? null,
+      barRel: bar?.getAttribute('rel') ?? '',
+      headHref: headLink?.getAttribute('href') ?? null,
+      headText: headLink?.textContent?.trim() ?? null,
+      footHref: footLink?.getAttribute('href') ?? null,
+      footText: footLink?.textContent?.trim() ?? null,
+      target: footLink?.getAttribute('target') ?? null,
+      rel: footLink?.getAttribute('rel') ?? '',
+      credit: foot?.querySelector('.foot-credit span')?.textContent?.trim() ?? '',
+      note: foot?.querySelector('.foot-note')?.textContent?.trim() ?? null,
+    };
+  })())`);
+
   return {
     meta,
     align,
     sharedMask,
     translation,
+    attribution,
     langMenu: { ...langMenu, opened: opened?.visible === true && opened?.expanded === 'true', collapsed },
   };
 }
@@ -302,6 +335,7 @@ async function checkExport(cdp, downloadDir) {
     ['文件名以 .md 结尾', file.endsWith('.md')],
     ['首行是文章标题（# 开头）', /^# \S/.test(lines[0] ?? '')],
     ['来源信息在位', text.includes('> **来源**：https://')],
+    ['标注了"译文由 AI 生成"', text.includes('> **声明**：译文由 AI 生成')],
     ['写明了格式约定', text.includes('格式约定')],
     ['含原文', text.includes('This chapter introduces JavaScript')],
     ['译文用引用块', /^> 【/m.test(text)],
@@ -467,6 +501,14 @@ async function main() {
   // 无头浏览器默认拒绝下载，导出验证得先把下载目录指到这儿
   const downloadDir = mkdtempSync(path.join(tmpdir(), 'ewr-dl-'));
 
+  // 统计文件也指到临时目录。
+  //
+  // **自检绝不能写进 `server/data/stats.json`**：它每跑一次都会记下几十次页面访问、
+  // 几次抓取和整篇的翻译块数，全是假数据。混进去以后，看板上"到底有多少人真的在用"
+  // 就再也说不清了 —— 而那恰恰是这套统计存在的唯一理由。
+  // （这个文件是 .gitignore 里的，出问题不会有任何提示，只会让数字慢慢变得不可信。）
+  const statsFile = path.join(tmpdir(), `ewr-stats-${Date.now()}.json`);
+
   const stack = await startDevStack({
     repoRoot,
     webRoot,
@@ -475,6 +517,7 @@ async function main() {
     nestEnv: {
       LLM_BASE_URL: mock.baseUrl,
       LLM_API_KEY: 'sk-MOCK-shot-0000',
+      STATS_FILE: statsFile,
     },
   });
 
@@ -590,8 +633,9 @@ async function main() {
         continue;
       }
 
-      const { meta: m, align: a, sharedMask: s, translation: t, langMenu: lm } = await measure(chrome.cdp);
-      if (!m || !a || !s || !t || !lm) {
+      const { meta: m, align: a, sharedMask: s, translation: t, attribution: at, langMenu: lm } =
+        await measure(chrome.cdp);
+      if (!m || !a || !s || !t || !at || !lm) {
         console.log(`✗ ${c.name}：页面状态读不回来`);
         failed++;
         continue;
@@ -610,6 +654,28 @@ async function main() {
         // 补不回来的话文章开头就断了。导语一定是个段落，
         // 所以"第 1 行是 p"能稳定看住这个回归，且不依赖具体文案。
         ['首块是导语段落', m.firstType === 'p'],
+        // ---- 原文链接与出处署名（技术方案 7.11）----
+        // href 必须**等于地址条上显示的那个地址**："看到的就是会去的"，
+        // 这是机械判据；只查"链接在不在"会漏掉"指到别处"的情况。
+        ['地址条是原文外链，且与显示地址一致', !!at.barHref && at.barHref === at.barText],
+        [
+          '三个入口指向同一地址（地址条 / 站点名 / 查看原文）',
+          !!at.barHref && at.barHref === at.headHref && at.barHref === at.footHref,
+        ],
+        // 少了 noopener 时，被打开的页面能通过 window.opener 把我们的页面导航走
+        // （tabnabbing）。这是外链的硬要求，不是风格问题。
+        [
+          '外链开新标签页且带 noopener',
+          at.barTarget === '_blank' &&
+            at.barRel.includes('noopener') &&
+            at.target === '_blank' &&
+            at.rel.includes('noopener'),
+        ],
+        ['文末有出处署名', at.credit.startsWith('原文出自')],
+        // 降级页整篇都是原文转载，一个字译文都没有 —— 在那儿写"译文由 AI 生成"是假话
+        degraded
+          ? ['降级页不出现译文声明', at.note === null]
+          : ['标注了"译文由 AI 生成"', (at.note ?? '').includes('AI 生成')],
         // 降级态没有译文列，对齐与翻译都无从谈起
         ...(degraded
           ? [
@@ -637,6 +703,10 @@ async function main() {
       console.log(`  标题：${m.title}`);
       console.log(`  块数 ${m.cells}（原文 ${m.src} / 译文 ${m.dst} / 共享 ${m.shared}）`);
       console.log(`  首块 [${m.firstType ?? '无'}] ${m.firstText ?? ''}`);
+      console.log(
+        `  原文链接 ${at.barHref ?? '(未生成)'} · 署名「${at.credit}」` +
+          (at.note ? ` · 声明「${at.note}」` : ''),
+      );
       if (!degraded) {
         console.log(`  译文 ${t.filled}/${t.total} 回填，状态栏「${t.status ?? '无'}」`);
       }
@@ -668,6 +738,12 @@ async function main() {
       rmSync(downloadDir, { recursive: true, force: true });
     } catch {
       /* 文件可能还被浏览器占着，清不掉就算了 */
+    }
+    // 自检用的统计文件同样清掉（理由见上面 STATS_FILE 那段）
+    try {
+      rmSync(statsFile, { force: true });
+    } catch {
+      /* 同上 */
     }
   }
 }

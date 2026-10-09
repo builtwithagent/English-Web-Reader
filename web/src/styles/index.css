@@ -226,6 +226,9 @@ select { font-family: inherit; cursor: pointer; }
 }
 .mini-url .u { overflow: hidden; text-overflow: ellipsis; }
 .mini-url .lock { color: var(--text-muted); font-size: 11px; flex: none; }
+/* 地址条里的原文链接：看着还是地址（继承字号与颜色），悬停才显出可点 */
+.mini-url a.u { color: inherit; text-decoration: none; }
+.mini-url a.u:hover { text-decoration: underline; }
 
 /* 控制条 */
 .controls {
@@ -306,6 +309,23 @@ html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: 
   background: var(--bg-subtle);
 }
 .art-meta .tag.ok { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+/* 出处链接（技术方案 7.11）：站点名本身做成链接，箭头是"会开新标签"的提示 */
+.art-meta a { color: inherit; text-decoration: none; }
+.art-meta a:hover { text-decoration: underline; }
+.art-meta .to-src { color: var(--accent); }
+
+/* 文末的出处署名与原文链接。放文末是因为"读者读完才需要知道这是哪儿来的"，
+   它的作用是标注而不是引导（顶部再去一个入口反而喧宾夺主）。 */
+.art-foot {
+  margin-top: 44px; padding-top: 18px;
+  border-top: 1px solid var(--border-soft);
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 12.5px; color: var(--text-muted);
+}
+.art-foot .foot-credit { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.art-foot a.to-src { color: var(--accent); font-weight: 500; text-decoration: none; }
+.art-foot a.to-src:hover { text-decoration: underline; }
+.art-foot .foot-note { margin: 0; }
 
 /* ============ 正文网格 ============ */
 /* 对齐与滚动同步的做法（技术方案 7.4）：

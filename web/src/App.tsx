@@ -32,6 +32,7 @@ import { buildMarkdown, downloadText, suggestFileName } from './markdown';
 import { StatsPage } from './pages/StatsPage';
 import { usePathname } from './router';
 import { targetLangLabel, type DisplayMode } from './types';
+import { isHttpUrl } from './url';
 
 export function App() {
   const path = usePathname();
@@ -171,7 +172,21 @@ function ReaderApp() {
             <div className="chrome-inner">
               <div className="mini-url">
                 <span className="lock">🔒</span>
-                <span className="u">{article.finalUrl}</span>
+                {/* 地址条回答的是"这篇原文在哪"，让它可点是最自然的做法（技术方案 7.11）。
+                    不是 http(s) 的串退回纯文本 —— 塞进 href 就是 XSS（见 url.ts）。 */}
+                {isHttpUrl(article.finalUrl) ? (
+                  <a
+                    className="u"
+                    href={article.finalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="在新标签页打开原文"
+                  >
+                    {article.finalUrl}
+                  </a>
+                ) : (
+                  <span className="u">{article.finalUrl}</span>
+                )}
               </div>
               <button type="button" className="btn" onClick={handleReset}>
                 换一篇

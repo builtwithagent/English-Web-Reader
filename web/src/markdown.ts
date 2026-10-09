@@ -11,6 +11,7 @@
  * 而把约定写在开头，读者扫一眼就懂，不用猜。
  */
 
+import { AI_TRANSLATION_NOTE } from './attribution';
 import {
   langLabel,
   targetLangLabel,
@@ -64,6 +65,9 @@ export function buildMarkdown({
     }`,
   );
   lines.push(`> **导出**：${formatTime(exportedAt)} · 英文网页阅读器`);
+  // 只在**真有译文**时声明（模式选"仅原文"时导出的是纯原文，标一句"译文由 AI 生成"
+  // 是假话）。这一句与页脚用的是同一个常量 —— 两处各写一份迟早不一致（7.11）
+  if (wantTarget) lines.push(`> **声明**：${AI_TRANSLATION_NOTE}`);
   lines.push('');
   lines.push('<!-- 格式约定：每个内容块先原文，紧随其后的引用块是它的译文。 -->');
   lines.push('');

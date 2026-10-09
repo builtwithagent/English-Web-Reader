@@ -23,9 +23,9 @@ import {
   formatLocalClock,
   formatLocalTime,
   formatNumber,
-  isHttpUrl,
   topEntries,
 } from '../stats';
+import { isHttpUrl } from '../url';
 import { STATS_KEY_STORAGE, parseStatsKey } from '../statsKey';
 import type { StatsDay, StatsFailure, StatsResponse } from '../types';
 

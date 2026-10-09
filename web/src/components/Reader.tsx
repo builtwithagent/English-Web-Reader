@@ -12,6 +12,7 @@
 
 import { Fragment, useState } from 'react';
 import { BlockView } from './BlockView';
+import { AI_TRANSLATION_NOTE, buildAttribution } from '../attribution';
 import {
   EXTRACT_LEVEL_LABELS,
   langLabel,
@@ -53,17 +54,29 @@ export function Reader({
   // 给个能切但切了没反应的开关等于给假选项，所以直接锁成单栏原文。
   const mode: DisplayMode = degraded ? 'src' : preferredMode;
 
+  // 出处署名与原文链接（技术方案 7.11）。`href` 为 null 时**不生成链接** ——
+  // 把不能当链接打开的串塞进 href 是 XSS，不是显示问题（见 url.ts）。
+  const credit = buildAttribution(article);
+
   return (
     <div className="reader" data-lang={degraded ? 'non-en' : 'en'} data-mode={mode}>
       <article className="article">
         <header className="art-head">
           <h1>{article.title || article.finalUrl}</h1>
           <div className="art-meta">
-            <span>{article.siteName}</span>
-            {article.byline ? (
+            {/* 站点名本身就是出处，直接做成外链 —— 再加一个"查看原文"在这儿
+                是同一个目的地两个入口，反而喧宾夺主（明确的那个入口放在文末） */}
+            {credit.href ? (
+              <a className="to-src" href={credit.href} target="_blank" rel="noopener noreferrer">
+                {credit.source} ↗
+              </a>
+            ) : (
+              <span>{credit.source}</span>
+            )}
+            {credit.byline ? (
               <>
                 <span className="dot" />
-                <span>{article.byline}</span>
+                <span>{credit.byline}</span>
               </>
             ) : null}
             <span className="dot" />
@@ -115,6 +128,26 @@ export function Reader({
             );
           })}
         </div>
+
+        {/* 出处署名（技术方案 7.11）。
+            放文末是刻意的：**读者读完才需要知道"这是哪儿来的、能不能点回去"**；
+            放在开头会和标题抢位置，而它的作用是"标注"不是"引导"。
+            降级态（整篇是原文转载）**更需要**这一块 —— 那些页面里没有一个字是我们的。
+
+            译文声明只在真有译文时出现：降级页上写"译文由 AI 生成"是句假话。 */}
+        <footer className="art-foot">
+          <div className="foot-credit">
+            {credit.href ? (
+              <a className="to-src" href={credit.href} target="_blank" rel="noopener noreferrer">
+                查看原文 ↗
+              </a>
+            ) : null}
+            <span>{credit.credit}</span>
+          </div>
+          {!degraded ? (
+            <p className="foot-note">{AI_TRANSLATION_NOTE} · 原文版权归原站与作者所有</p>
+          ) : null}
+        </footer>
       </article>
     </div>
   );

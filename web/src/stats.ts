@@ -67,18 +67,7 @@ export function formatLocalClock(iso: string): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-/**
- * 这个串能不能当链接打开。
- *
- * 明细里存的 URL 绝大多数是正常的 http(s)，但 `invalid_url` 那条路径存的是
- * **用户原始输入**（可能是 `not a url`，也可能是 `javascript:` 之类）。
- * 后者绝对不能塞进 `href` —— 那不是显示问题，是 XSS。
- */
-export function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
+// `isHttpUrl` 搬去了 `url.ts`：它不再只是统计页在用 ——
+// 阅读器渲染「原文链接」也要用同一个判断。原来它住在本文件是因为
+// "明细里存的是用户原始输入，可能是 `javascript:`"，那个理由今天仍然成立，
+// 但".不把可执行串塞进 href"这件事跟统计页没有关系，放在这里会让人不敢复用。

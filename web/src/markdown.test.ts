@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AI_TRANSLATION_NOTE } from './attribution';
 import { buildMarkdown, suggestFileName } from './markdown';
 import type { Article, Block, DisplayMode, TargetLang } from './types';
 
@@ -99,6 +100,16 @@ describe('buildMarkdown：文件头', () => {
 
   it('写了格式约定（读者不用猜旁边的引用块是什么）', () => {
     expect(markdown).toContain('<!-- 格式约定：每个内容块先原文，紧随其后的引用块是它的译文。 -->');
+  });
+
+  it('带译文时声明"由 AI 生成"（技术方案 7.11）', () => {
+    // 导出的文件会离开这个页面、被转发给别人。没有这句声明，
+    // 收到的人无法分辨"这是原站发布的中文版"还是机器翻译
+    expect(markdown).toContain(`> **声明**：${AI_TRANSLATION_NOTE}`);
+  });
+
+  it('仅原文模式下**不写**这句声明（那时文档里一个字译文都没有）', () => {
+    expect(build([P], 'src').markdown).not.toContain('AI 生成');
   });
 
   it('站点 / 作者为空时对应那行不出现（不输出空标签）', () => {
