@@ -1,6 +1,29 @@
 import { isIP } from 'node:net';
 
 /**
+ * 从请求里取客户端 IP —— 只给**统计与限流**用，不参与 SSRF 判定。
+ *
+ * 为什么要先看 `X-Forwarded-For`：发布沙箱（以及任何反向代理）后面，
+ * socket 的 remoteAddress 永远是代理自己的地址，直接用它做限流等于
+ * 把所有人算成同一个人。这里取 XFF 的**第一跳**，也就是最靠近客户端的那个。
+ *
+ * 注意：XFF 是**客户端可以伪造**的。所以这个值只能用来做"粗暴的限流/去重"，
+ * 绝不能当安全边界（SSRF 那道门看的是解析出来的真实 IP，与本函数无关）。
+ */
+export function clientIp(req: {
+  headers: Record<string, unknown>;
+  socket?: { remoteAddress?: string };
+}): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  if (typeof raw === 'string' && raw.length > 0) {
+    const first = raw.split(',')[0].trim();
+    if (first) return first;
+  }
+  return req.socket?.remoteAddress ?? 'unknown';
+}
+
+/**
  * 私有 / 保留网段判定 —— SSRF 防护的第二道门（技术方案 4.4 第 2 条）。
  *
  * 服务端"按用户给的 URL 去抓"，如果不校验目标 IP，攻击者就能让服务器

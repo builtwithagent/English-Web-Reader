@@ -26,6 +26,9 @@ const EXPECTED_CODES = [
   'not_html',
   'size_limit',
   'source_not_english',
+  'stats_disabled',
+  'stats_locked',
+  'stats_unauthorized',
   'timeout',
   'too_many_redirects',
   'translate_auth_failed',
@@ -79,6 +82,15 @@ describe('ERROR_SPEC：归一口径（改回去就是 bug）', () => {
   it('安全红线类的错误码固定：SSRF 拦截给 403，非英文闸门给 422', () => {
     expect(ERROR_SPEC.blocked_target.status).toBe(403);
     expect(ERROR_SPEC.source_not_english.status).toBe(422);
+  });
+
+  it('统计接口的 401 是**我们自己的**登录要求，不是把上游 401 漏了出去', () => {
+    // 上面那条"绝不透出 401"讲的是**上游**（LLM 服务商）的 401 —— 那是我们 key 的问题，
+    // 前端不该猜。这里反过来：统计接口的 401 就是"你还没登录"，而且必须原样透出 ——
+    // 浏览器正是靠 `401 + WWW-Authenticate` 才会弹登录框。两者含义相反，别合并。
+    expect(ERROR_SPEC.stats_unauthorized.status).toBe(401);
+    expect(ERROR_SPEC.stats_disabled.status).toBe(503);
+    expect(ERROR_SPEC.stats_locked.status).toBe(429);
   });
 });
 

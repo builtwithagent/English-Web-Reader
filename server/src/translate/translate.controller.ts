@@ -1,6 +1,8 @@
 import { Body, Controller, Logger, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { AppError } from '../common/errors';
+import { StatsService } from '../stats/stats.service';
+import { urlKey } from '../stats/stats.types';import { normalizeTargetLang } from './langs';
 import { TranslateRequestDto } from './translate.dto';
 import { TranslateService } from './translate.service';
 
@@ -16,13 +18,33 @@ import { TranslateService } from './translate.service';
 export class TranslateController {
   private readonly logger = new Logger(TranslateController.name);
 
-  constructor(private readonly translateService: TranslateService) {}
+  constructor(
+    private readonly translateService: TranslateService,
+    private readonly stats: StatsService,
+  ) {}
 
   @Post()
   async translate(@Body() dto: TranslateRequestDto, @Res() res: Response): Promise<void> {
     // 前置检查必须在写头之前跑完。一 flushHeaders() 状态码就定死，
     // 此时再抛错只能往流里塞一个错误事件，而前端拿到的 HTTP 状态还是 200。
-    this.translateService.preflight(dto);
+    try {
+      this.translateService.preflight(dto);
+    } catch (err) {
+      // 被挡下的请求也要记：它反映"有多少人在拿非英文页试"，
+      // 是判断要不要放宽语言闸门的唯一依据。
+      this.stats.recordTranslateReject(err instanceof AppError ? err.code : 'internal_error');
+      throw err;
+    }
+
+    // 记账放在 preflight 之后、发流之前：**一次请求只记一次**，
+    // 记在 finally 里会在客户端断开时被漏掉，记在每块里又会重复。
+    // 语言先归一：DTO 只校验了"是个字符串"，原样记下来分布就没法看了。
+    // 地址记完整的（不记域名）：看板上要能看出"是哪一篇在烧额度"。
+    this.stats.recordTranslate({
+      url: urlKey(dto.url ?? ''),
+      targetLang: normalizeTargetLang(dto.targetLang),
+      blocks: dto.blocks.length,
+    });
 
     res.status(200);
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');

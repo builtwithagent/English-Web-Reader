@@ -1,13 +1,18 @@
 /**
- * 顶层：输入态 → 加载态 → 阅读态，把各层 Hook 串起来（技术方案 7.2）。
+ * 顶层：**路由**，然后是两个页面。
  *
- * 三条链在这里汇合，各自只做一件事：
+ * 路由是手写的（`src/router.ts`）—— 全站只有两条路径，装一个路由库换来的
+ * 是一套与项目其余部分无关的概念，而它要解决的问题在这里只有二十行。
+ *
+ * 之所以必须拆成两个组件（而不是在 `App` 里 `if` 完再往下写），是**钩子规则**：
+ * `ReaderApp` 里那十来个 hook 一个都不能少跑，条件返回会让它们时有时无。
+ * 拆开之后每条分支各自完整，React 也就能在切换时干净地卸载。
+ *
+ * 阅读器那部分（输入态 → 加载态 → 阅读态）的说明沿用了原来的注释 ——
+ * 三条链在那里汇合：
  *   `useArticle`     抓取 + 提取 + 语言判定
  *   `useTranslation` 按块翻译、按 id 回填
  *   `usePreferences` 字号 / 模式 / 深浅色 / 目标语言
- *
- * 语言分叉点也收在这一层：`article.isEnglish` 决定双栏还是单栏，
- * 往下传的就只有"要不要渲染译文列"这一个布尔值。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -24,9 +29,18 @@ import { useArticle } from './hooks/useArticle';
 import { useTranslation } from './hooks/useTranslation';
 import { usePreferencesApi } from './hooks/usePreferences';
 import { buildMarkdown, downloadText, suggestFileName } from './markdown';
+import { StatsPage } from './pages/StatsPage';
+import { usePathname } from './router';
 import { targetLangLabel, type DisplayMode } from './types';
 
 export function App() {
+  const path = usePathname();
+  // 未知路径也落到阅读器上：这是个单页工具，用户手打错了地址时
+  // 给他一个能用的页面，比一张"404 找不到页面"更合理
+  return path === '/stats' ? <StatsPage /> : <ReaderApp />;
+}
+
+function ReaderApp() {
   const { prefs, setMode, bumpFontSize, toggleTheme, setTargetLang } = usePreferencesApi();
   const { status, article, error, load, reset } = useArticle();
 

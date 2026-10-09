@@ -215,6 +215,10 @@ export type ErrorCode =
   | 'translate_rate_limited'
   | 'translate_unavailable'
   | 'translate_timeout'
+  // ---- 统计页（/api/stats，作者自用，普通读者碰不到）----
+  | 'stats_disabled'
+  | 'stats_unauthorized'
+  | 'stats_locked'
   // ---- 兜底 ----
   | 'internal_error';
 
@@ -233,3 +237,85 @@ export const EXTRACT_LEVEL_LABELS: Record<ExtractLevel, string> = {
   heuristic: '启发式提取',
   body: '整页提取',
 };
+
+// ============================================================================
+// 访问统计（/api/stats，仅作者自用）
+// 对应 server/src/stats/stats.api.ts
+// ============================================================================
+
+/**
+ * 一天的聚合。
+ *
+ * 注意 `visitors` 是**数量**而不是指纹数组 —— 服务端只把"今天几个人"发过来，
+ * 指纹（哪怕已加盐）不出服务端，页面上也没有它可用的地方。
+ */
+export interface StatsDay {
+  date: string;
+  pageViews: number;
+  visitors: number;
+  /** 页面路径 → 次数 */
+  paths: Record<string, number>;
+  /** 来源站点（Referer 的 host）→ 次数 */
+  referrers: Record<string, number>;
+  /** 带 `?url=` 直达阅读态的访问次数 */
+  directLinks: number;
+  articleTotal: number;
+  articleOk: number;
+  /** 归一化错误码 → 次数（与 `ErrorCode` 同一套码） */
+  articleErrors: Record<string, number>;
+  /** 抓取过的**完整 URL** → 次数 */
+  articleUrls: Record<string, number>;
+  /** 失败明细，最近的在前。有上限，页面上要如实说明可能被截断 */
+  articleFailures: StatsFailure[];
+  translateTotal: number;
+  /** 累计发出的待译块数 —— 这才是真正花额度的量 */
+  translateBlocks: number;
+  translateLangs: Record<string, number>;
+  /** 翻译过的**完整 URL** → 次数 */
+  translateUrls: Record<string, number>;
+  /** 被入口语言闸门挡下的次数 */
+  translateRejects: Record<string, number>;
+}
+
+/**
+ * 一条失败明细。
+ *
+ * `message` / `hint` 是**服务端**从码表现解析的（错误文案只有 `common/errors.ts`
+ * 一处定义），前端拿到就能直接显示，不要再抄一份中文表。
+ */
+export interface StatsFailure {
+  url: string;
+  /** 归一化错误码，做调试提示用 */
+  code: string;
+  message: string;
+  hint?: string;
+  /** 发生时间（ISO 8601） */
+  at: string;
+}
+
+/** 跨天累加的总数。失败数由页面拿 `articleTotal - articleOk` 自己算 */
+export interface StatsTotals {
+  pageViews: number;
+  /** 按天去重后累加，所以是"人·天"不是"人" */
+  visitors: number;
+  directLinks: number;
+  articleTotal: number;
+  articleOk: number;
+  translateTotal: number;
+  translateBlocks: number;
+}
+
+export interface StatsResponse {
+  generatedAt: string;
+  /** 最多保留多少天 */
+  retainDays: number;
+  /** 每天最多保留多少条失败明细（超出时页面上要说明"不是全部"） */
+  maxFailuresPerDay: number;
+  /** 数据里实际有多少天 */
+  totalDays: number;
+  totals: StatsTotals;
+  /** 错误码 → 可读文案。只含数据里出现过的码 */
+  errorLabels: Record<string, string>;
+  /** 按日期升序 */
+  days: StatsDay[];
+}

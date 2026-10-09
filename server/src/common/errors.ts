@@ -31,6 +31,10 @@ export type ErrorCode =
   | 'translate_rate_limited'
   | 'translate_unavailable'
   | 'translate_timeout'
+  // ---- 统计页（/api/stats，作者自用，普通读者碰不到）----
+  | 'stats_disabled'
+  | 'stats_unauthorized'
+  | 'stats_locked'
   // ---- 兜底 ----
   | 'internal_error';
 
@@ -141,12 +145,27 @@ export const ERROR_SPEC: Record<ErrorCode, ErrorSpec> = {
     status: 504,
     message: '这一段的翻译超时了',
   },
+  // 统计接口的三个码。这里**没有用 404 假装不存在** —— 页面上要能区分
+  // "没配密码所以关了" 和 "密码输了"，否则用户只会看到一个说不清的失败。
+  stats_disabled: {
+    status: 503,
+    message: '统计接口未启用',
+    hint: '服务端需要先配置 STATS_PASSWORD 环境变量',
+  },
+  stats_unauthorized: {
+    status: 401,
+    message: '需要管理员身份',
+  },
+  stats_locked: {
+    status: 429,
+    message: '尝试次数过多',
+    hint: '请 5 分钟后再试',
+  },
   internal_error: {
     status: 500,
     message: '服务器出了点问题，稍后再试',
   },
 };
-
 export interface ErrorPayload {
   error: {
     code: ErrorCode;

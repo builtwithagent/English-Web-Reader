@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { StatsModule } from '../stats/stats.module';
 import { LlmService } from './llm.service';
 import { TranslateController } from './translate.controller';
 import { TranslateService } from './translate.service';
@@ -10,8 +11,11 @@ import { TranslateService } from './translate.service';
  * 抓取链路（`/api/article`）与翻译链路（`/api/translate`）各自独立，
  * 翻译服务不依赖正文提取的结果，也不感知它是从哪来的。
  * 把"翻译已抓取的文章"串起来是**前端**的事（它先拿 article、再拿它的 blocks 发 translate）。
+ *
+ * `StatsModule` 是两条链路唯一的共同依赖，而且它只是旁路打点 —— 不算破坏上面这条。
  */
 @Module({
+  imports: [StatsModule],
   controllers: [TranslateController],
   providers: [TranslateService, LlmService],
 })

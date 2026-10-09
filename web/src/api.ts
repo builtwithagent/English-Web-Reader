@@ -8,7 +8,14 @@
  *    上层只认 `code` 做分支，不解析字符串。
  */
 
-import type { Article, ErrorCode, ErrorPayload, TranslateEvent, TranslateRequest } from './types';
+import type {
+  Article,
+  ErrorCode,
+  ErrorPayload,
+  StatsResponse,
+  TranslateEvent,
+  TranslateRequest,
+} from './types';
 
 export class ApiError extends Error {
   readonly code: ErrorCode;
@@ -53,6 +60,34 @@ export async function fetchArticle(url: string, signal?: AbortSignal): Promise<A
   // 后端返回 200 但内容不是预期结构时，也不能让页面白屏
   try {
     return (await res.json()) as Article;
+  } catch {
+    throw new ApiError('internal_error', '服务器返回的数据看不懂', res.status);
+  }
+}
+
+/**
+ * 拉取访问统计数据（`/api/stats`，仅作者自用）。
+ *
+ * 鉴权走 HTTP Basic，但**前端完全不碰密码**：服务端回 `401 + WWW-Authenticate`
+ * 之后是**浏览器自己**弹登录框，输一次，同一会话内后续请求都会自动带上凭证。
+ * 前端要做的事只有一件 —— 把这个 401 翻译成"需要管理员身份"，别再重试。
+ *
+ * `503` 是"服务端没配 STATS_PASSWORD，这个接口关着"，跟"密码错了"是两回事，
+ * 页面上要分开说，否则用户只会看到一个说不清的失败。
+ */
+export async function fetchStats(signal?: AbortSignal): Promise<StatsResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/stats', { signal });
+  } catch (err) {
+    if (isAbortError(err)) throw err;
+    throw new ApiError('internal_error', '连不上服务器', 0, '检查一下网络，或稍后再试');
+  }
+
+  if (!res.ok) throw await toApiError(res);
+
+  try {
+    return (await res.json()) as StatsResponse;
   } catch {
     throw new ApiError('internal_error', '服务器返回的数据看不懂', res.status);
   }

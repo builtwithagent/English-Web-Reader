@@ -17,6 +17,13 @@
     // TS 6/7 起 rootDir 必须显式声明（决定 dist 的目录层级），否则直接报 TS5011。
     "rootDir": "./src",
     "incremental": true,
+    // 增量编译的记忆文件**必须放在 outDir 里面**。
+    // 放外面（默认的 tsconfig.tsbuildinfo）踩过两次：`rm -rf dist` 之后跑 build，
+    // tsc 按记忆认为"未改动的文件都已产出"，**直接跳过它们** —— 于是 dist 只补出
+    // 少数几个文件，而退出码是 0。表现为启动时报 `Cannot find module './xxx.controller'`，
+    // 排查方向会被带偏到模块解析上。
+    // 放进 dist 之后，"删产物"和"删记忆"变成同一个动作，这类失败不可能再发生。
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "skipLibCheck": true,
     "strict": true,
     "noImplicitOverride": true,

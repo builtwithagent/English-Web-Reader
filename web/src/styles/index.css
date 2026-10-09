@@ -483,3 +483,150 @@ html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: 
   .btn-export { display: none; }
   .controls .right { margin-left: 0; width: 100%; }
 }
+
+/* ============ 访问统计页（/stats，作者自用） ============ */
+/* 这一整块用的是上面那套主题变量，所以它天然跟着顶栏的深浅色开关走 ——
+   上一版由后端直出 HTML，后端得自己抄一份变量表，改配色要改两处。 */
+.stats-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+  font-size: 14px;
+}
+.stats-head { display: flex; align-items: center; gap: 12px; }
+/* `.spacer` 原来只写在 `.topbar` 下，这里得自己来一份，否则按钮全挤在左边 */
+.stats-head .spacer { flex: 1; }
+.stats-crumb { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+.stats-sub { margin: 8px 0 22px; color: var(--text-muted); font-size: 13px; }
+
+.stats-page h2 { margin: 34px 0 12px; font-size: 15px; font-weight: 650; }
+.stats-page h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--text-soft); }
+
+.stats-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.stats-card {
+  background: var(--bg-elev); border: 1px solid var(--border-soft);
+  border-radius: 10px; padding: 14px 16px;
+}
+.stats-card .label { color: var(--text-soft); font-size: 12.5px; }
+.stats-card .value {
+  font-size: 26px; font-weight: 650; margin: 2px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+.stats-card .hint { color: var(--text-muted); font-size: 12px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.stats-panel {
+  background: var(--bg-elev); border: 1px solid var(--border-soft);
+  border-radius: 10px; padding: 14px 16px;
+}
+
+/* 条形图。这里用 CSS 宽度而不是画 SVG —— 条数最多十行，没必要上图表库 */
+.stats-page .bars { list-style: none; margin: 0; padding: 0; }
+.stats-page .bars li {
+  display: grid; grid-template-columns: 1fr 84px 52px;
+  align-items: center; gap: 10px; padding: 3px 0;
+}
+.stats-page .bar-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--mono-font); font-size: 12px; color: var(--text-soft);
+}
+/* 完整 URL 是这一栏的重点，省略号会把"完整"这件事直接抹掉 —— 所以允许换行。
+   `break-all`：URL 里没有空格，不强行断行就会顶出容器。
+   条与数字改成顶部对齐，不然多行标签旁边的条会吊在半空 */
+.stats-page .bars.is-url li { grid-template-columns: minmax(0, 1fr) 48px 44px; align-items: start; }
+.stats-page .bars.is-url .bar-label { white-space: normal; word-break: break-all; line-height: 1.5; }
+.stats-page .bars.is-url .bar-track { margin-top: 7px; }
+/* 中文原因允许换行，但不要在词中间断 */
+.stats-page .bars.is-text .bar-label {
+  white-space: normal; word-break: keep-all; line-height: 1.45;
+  font-family: var(--ui-font); font-size: 12.5px;
+}
+.stats-page .bar-track {
+  display: block; height: 6px; border-radius: 3px;
+  background: var(--border-soft); overflow: hidden;
+}
+.stats-page .bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.stats-page .bar-value {
+  text-align: right; font-variant-numeric: tabular-nums;
+  font-size: 12.5px; color: var(--text-soft);
+}
+
+.stats-table {
+  width: 100%; border-collapse: collapse; background: var(--bg-elev);
+  border: 1px solid var(--border-soft); border-radius: 10px; overflow: hidden;
+}
+.stats-table th, .stats-table td {
+  padding: 8px 14px; text-align: right; border-bottom: 1px solid var(--border-soft);
+}
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+.stats-table th {
+  background: var(--accent-soft); color: var(--text-soft);
+  font-weight: 600; font-size: 12.5px;
+}
+.stats-table td { font-variant-numeric: tabular-nums; font-size: 13px; }
+.stats-table tbody tr:last-child td { border-bottom: none; }
+
+.stats-page .empty { margin: 0; color: var(--text-muted); font-size: 12.5px; }
+.stats-page .dim { color: var(--text-muted); }
+.stats-page .bad { color: var(--danger); }
+.stats-page .mono { font-family: var(--mono-font); }
+
+/* 401 / 503 两种"没拿到数据"。它们不是错误页，是配置说明，所以不做成红色告警 */
+.stats-notice {
+  background: var(--bg-subtle); border: 1px solid var(--border-soft);
+  border-radius: 10px; padding: 16px 18px;
+}
+.stats-notice p { margin: 0 0 6px; }
+.stats-notice p:last-of-type { margin-bottom: 14px; }
+.stats-notice code {
+  font-family: var(--mono-font); font-size: 12.5px;
+  background: var(--accent-soft); color: var(--accent);
+  padding: 1px 5px; border-radius: 4px;
+}
+
+.stats-error { color: var(--danger); }
+
+.stats-foot { margin-top: 34px; color: var(--text-muted); font-size: 12px; }
+.stats-foot p { margin: 0; }
+
+@media (max-width: 620px) {
+  .stats-page { padding: 20px 16px 48px; }
+  .stats-crumb { display: none; }
+  .stats-head { gap: 8px; }
+}
+
+/* ---- 失败明细：看板上唯一"能拿来干活"的一块 ---- */
+/* 失败数字做成按钮但长得像链接 —— 它不跳新页面，是在本页切明细，
+   用 `<a>` 语义上是错的；但不像链接的话"能点"这件事根本看不出来 */
+.stats-page .stats-link {
+  appearance: none; background: none; border: none; padding: 0;
+  font: inherit; color: inherit; text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer;
+}
+.stats-page .stats-link:hover { color: var(--text); }
+
+.stats-table tr.is-selected td { background: var(--accent-soft); }
+
+.stats-failures { margin-top: 26px; }
+.stats-failures-head { display: flex; align-items: baseline; gap: 12px; }
+.stats-failures-head h2 { flex: 1; }
+
+.stats-failures-table { table-layout: fixed; }
+/* 时间列窄、原因列定宽，剩下的都给 URL —— URL 是这一行里最长的东西 */
+.stats-failures-table th:nth-child(1), .stats-failures-table td:nth-child(1) { width: 84px; }
+.stats-failures-table th:nth-child(3), .stats-failures-table td:nth-child(3) { width: 34%; }
+.stats-failures-table th:nth-child(2), .stats-failures-table td:nth-child(2) { text-align: left; }
+/* 表头也得跟着左对齐，不然"原因"两个字会飘到列的右边去 */
+.stats-failures-table th:nth-child(3) { text-align: left; }
+
+/* 长 URL 必须能断行，否则会把表格撑到横向滚动 */
+.stats-page .url-cell {
+  font-family: var(--mono-font); font-size: 12px;
+  word-break: break-all; line-height: 1.45;
+}
+.stats-page .url-cell a { color: var(--accent); text-decoration: none; }
+.stats-page .url-cell a:hover { text-decoration: underline; }
+
+.stats-page .reason-cell { text-align: left; font-size: 12.5px; }
+.stats-page .reason-cell .reason { display: block; color: var(--text); }
+.stats-page .reason-cell .hint { display: block; color: var(--text-muted); font-size: 11.5px; margin-top: 2px; }

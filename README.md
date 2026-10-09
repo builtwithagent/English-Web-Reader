@@ -28,6 +28,15 @@ npm install
 npm run dev                 # http://localhost:5173
 ```
 
+### 3. Production (single port)
+
+```bash
+npm run build               # installs and builds both packages
+npm start                   # one process serves the page and the API
+```
+
+The server hosts `web/dist` itself, so `/api/...` stays same-origin and there is no CORS to configure. Static hosting is only mounted when `web/dist/index.html` exists — otherwise an unknown `/api/...` path would fall back to an HTML page instead of clean JSON.
+
 ### Configuration
 
 All backend configuration lives in `server/.env`. The upstream is addressed with **vendor-neutral names** on purpose — switching providers means changing values, not code:
@@ -39,10 +48,16 @@ All backend configuration lives in `server/.env`. The upstream is addressed with
 | `LLM_BASE_URL` | no | `https://open.bigmodel.cn/api/paas/v4` | The trailing `/v4` is required — the client appends `/chat/completions` |
 | `LLM_MODEL` | no | `glm-4-flash` | Upstream model names change without changelog entries; check the provider's docs |
 | `LLM_TIMEOUT_MS` | no | `30000` | Per-block timeout |
+| `STATS_PASSWORD` | no | — | Turns on `GET /api/stats`, the JSON behind the `/stats` dashboard, guarded by HTTP Basic auth. Leaving it empty keeps that endpoint **off** (503), not unprotected |
+| `STATS_USER` | no | `admin` | Username for `/api/stats` |
 
 Without a key the translation endpoint refuses at the door; fetching, reading and exporting keep working.
 
-> Both packages ship an `.npmrc` pointing at a China-based npm mirror. Delete those two files if you're building from outside China.
+`/stats` is a client-side route served by the same bundle, reading its data from `/api/stats`. It is deliberately not linked from anywhere in the UI. It counts page views, fetches and translation volume per day, and never stores raw IPs or user agents — only a per-day salted hash, so visitor counts cannot be traced back to a person.
+
+Two things it **does** store verbatim, because the dashboard is useless without them: the **full URL** of every page you fetch or translate (query string included, fragment dropped), and for each failed fetch a small entry with the URL, the error code and the timestamp — that's what answers "which four pages failed, and why". Both live only in the local `server/data/stats.json`, behind Basic auth. Credentials are sent in cleartext on every request, so only enable it behind HTTPS.
+
+> Both packages ship an `.npmrc` pointing at a China-based npm mirror. Delete those files if you're building from outside China.
 
 ## Testing
 
@@ -50,8 +65,8 @@ Testing is split into three layers on purpose, each answering a different questi
 
 ```bash
 # 1. Offline logic — fast, no network, no LLM quota
-cd server && npm test        # 197 checks
-cd web    && npm test        # 114 checks
+cd server && npm test        # 262 checks
+cd web    && npm test        # 138 checks
 
 # 2. Real network, real articles — "does the whole chain actually work"
 cd server && npm run smoke             # fetch / extract / language / SSRF, 16 checks
