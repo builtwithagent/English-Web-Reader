@@ -3,12 +3,20 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 /**
- * `/stats` 的准入 —— HTTP Basic Auth + 失败节流。
+ * `/stats` 的准入 —— 两把锁 + 失败节流。
  *
- * 为什么用 Basic 而不是登录页：这个页面**只有作者一个人看**，为它写一套
- * 会话/表单/CSRF 完全不值当。代价必须说清楚：
+ * 两条通路，**任一条通过即可**：
+ * 1. `Authorization: Basic ...`（标准做法，本地与正常反代下都可用）
+ * 2. `X-Stats-Key: <密码>`（自定义头，给"网关会改写 Authorization"的环境用）
+ *
+ * 为什么必须有第 2 条：发布环境的网关会**无条件用自己的 Bearer token 覆盖
+ * `Authorization` 头** —— 实测把客户端那个头去掉、什么都不发，应用照样收到
+ * `Authorization: Bearer <386 字符>`。也就是说在那台机器上 Basic 永远不可能通过，
+ * 而自定义头原样到达。这是踩过一次线上 401 才补上的入口。
+ *
+ * 代价必须说清楚：
  * - 凭证是**明文随每个请求发**的，所以只有上 HTTPS 时才安全；
- * - 浏览器会把它记住并在同域下自动带上，所以别在同一个域名上放别的东西。
+ * - 浏览器会记住 Basic 凭证并在同域下自动带上，所以别在同一个域名上放别的东西。
  *
  * 为什么还要自己加节流：Basic Auth **本身零防爆破** —— 它没有任何
  * "错了三次就锁"的机制。公网裸奔时这是唯一挡在密码前面的东西，
@@ -42,6 +50,11 @@ export class StatsAuth {
 
   verify(header: string | undefined): boolean {
     return checkBasicAuth(header, this.username, this.password);
+  }
+
+  /** 第二条通路：`X-Stats-Key` 直接带密码（网关会覆盖 `Authorization` 的环境靠它） */
+  verifyKey(key: string | undefined): boolean {
+    return checkStatsKey(key, this.password);
   }
 
   isLocked(ip: string): boolean {
@@ -114,4 +127,20 @@ function safeEqual(a: string, b: string): boolean {
   const digestA = createHash('sha256').update(a, 'utf8').digest();
   const digestB = createHash('sha256').update(b, 'utf8').digest();
   return timingSafeEqual(digestA, digestB);
+}
+
+/**
+ * 校验自定义头里的密码。
+ *
+ * 只比密码 —— 这条路上没有"用户名"这个概念，少一个要记的东西；能到达这里的人
+ * 本来就是拿得到服务器配置的人。比较方式与 Basic 那条完全一致（摘要后定长比较），
+ * 于是"密码多长"同样不体现在耗时上。
+ *
+ * 两端空白容忍掉：这个值通常是**从页面输入框或 `?key=` 粘过来的**，多带一个空格
+ * 是最常见的复制失误，为此让人对着"密码不对"发呆不值当。
+ */
+export function checkStatsKey(key: string | undefined, password: string): boolean {
+  // 和 Basic 那条一样 fail closed：没配密码就不是"随便进"
+  if (password.length === 0 || !key) return false;
+  return safeEqual(key.trim(), password);
 }

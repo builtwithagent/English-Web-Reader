@@ -584,6 +584,18 @@ html[data-theme="dark"] .segmented button.on { background: #2d333b; box-shadow: 
   padding: 1px 5px; border-radius: 4px;
 }
 
+/* 401 时页面自己收密码（不靠浏览器弹框，理由见 StatsPage.tsx） */
+.stats-notice .key-row { display: flex; gap: 8px; align-items: center; }
+.stats-notice input {
+  flex: 1; min-width: 0;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border-soft); border-radius: 8px;
+  padding: 8px 10px; font-size: 14px; font-family: var(--ui-font); outline: none;
+  transition: border-color .15s;
+}
+.stats-notice input:focus { border-color: var(--accent); }
+.stats-notice input::placeholder { color: var(--text-muted); }
+
 .stats-error { color: var(--danger); }
 
 .stats-foot { margin-top: 34px; color: var(--text-muted); font-size: 12px; }

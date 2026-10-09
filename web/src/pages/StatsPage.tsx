@@ -7,11 +7,15 @@
  * 同一个主题开关、同一个 `ApiError` 约定。
  *
  * 它**不在任何地方被链接**，也带着 `noindex`。但这不是安全措施：
- * 真正的门是 `/api/stats` 上那把 Basic Auth 密码，页面本身公开无妨
- * （拿不到数据，看到的只是登录框）。
+ * 真正的门是 `/api/stats` 上那道密码（见 `web/src/statsKey.ts` 与 `server/src/stats/stats.auth.ts`），
+ * 页面本身公开无妨（拿不到数据，看到的只是输入框）。
+ *
+ * **密码由这个页面自己收，不靠浏览器弹框**：服务端曾靠 `401 + WWW-Authenticate`
+ * 让浏览器自己弹登录框，但发布环境的网关会覆盖 `Authorization` 头，弹了也进不去，
+ * 只会变成弹了又弹的死循环。现在两条路都走自定义头，见 `api.ts` 的 `fetchStats`。
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { ApiError, fetchStats, isAbortError } from '../api';
 import { usePreferencesApi } from '../hooks/usePreferences';
 import {
@@ -22,6 +26,7 @@ import {
   isHttpUrl,
   topEntries,
 } from '../stats';
+import { STATS_KEY_STORAGE, parseStatsKey } from '../statsKey';
 import type { StatsDay, StatsFailure, StatsResponse } from '../types';
 
 /** 最近多少天进历史表 */
@@ -30,18 +35,63 @@ const HISTORY_DAYS = 14;
 type View =
   | { kind: 'loading' }
   | { kind: 'ready'; data: StatsResponse }
-  /** 401：浏览器已经弹过登录框，用户取消了 */
+  /** 401：要密码（或是密码不对）—— 由页面自己收，别指望浏览器弹框 */
   | { kind: 'locked' }
   /** 503：服务端没配 STATS_PASSWORD，接口是关着的 */
   | { kind: 'disabled' }
   | { kind: 'failed'; message: string; hint?: string };
 
+/**
+ * 页面打开时的密钥来源：先看 `?key=`（引导用），再看本次会话里存过的。
+ *
+ * `?key=` 取到之后**立刻把 query 抹掉** —— 否则密码会留在地址栏、进浏览器历史、
+ * 被截图，还可能随 Referer 漏给外链。抹掉它用 `replaceState`，不触发路由的
+ * `popstate`，所以不会重渲染。
+ */
+function readInitialKey(): string | null {
+  const fromUrl = parseStatsKey(window.location.search);
+  if (fromUrl) {
+    rememberKey(fromUrl);
+    window.history.replaceState(null, '', window.location.pathname);
+    return fromUrl;
+  }
+  try {
+    return window.sessionStorage.getItem(STATS_KEY_STORAGE) || null;
+  } catch {
+    // 隐私模式等场景下 sessionStorage 会抛异常 —— 那就当没存过
+    return null;
+  }
+}
+
+function rememberKey(key: string): void {
+  try {
+    window.sessionStorage.setItem(STATS_KEY_STORAGE, key);
+  } catch {
+    /* 存不下就算了，这一次仍然可用 */
+  }
+}
+
+function forgetKey(): void {
+  try {
+    window.sessionStorage.removeItem(STATS_KEY_STORAGE);
+  } catch {
+    /* 同上 */
+  }
+}
+
 export function StatsPage() {
   const { prefs, toggleTheme } = usePreferencesApi();
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [reloadKey, setReloadKey] = useState(0);
+  const [key, setKey] = useState<string | null>(readInitialKey);
 
   const reload = useCallback(() => setReloadKey((n) => n + 1), []);
+
+  /** 用户输了密码：存下来，改 state 会让下面的 effect 重新拉一次 */
+  const submitKey = useCallback((value: string) => {
+    rememberKey(value);
+    setKey(value);
+  }, []);
 
   useEffect(() => {
     const previous = document.title;
@@ -55,7 +105,7 @@ export function StatsPage() {
     const controller = new AbortController();
     setView({ kind: 'loading' });
 
-    fetchStats(controller.signal)
+    fetchStats(key ?? undefined, controller.signal)
       .then((data) => setView({ kind: 'ready', data }))
       .catch((err: unknown) => {
         // 组件卸载/换页导致的取消不是错误，静默退出
@@ -63,6 +113,12 @@ export function StatsPage() {
 
         if (err instanceof ApiError) {
           if (err.status === 401) {
+            // 会话里存着的那把不对，先扔掉，否则用户改都没法改
+            if (key !== null) {
+              forgetKey();
+              setKey(null);
+              return;
+            }
             setView({ kind: 'locked' });
             return;
           }
@@ -78,7 +134,7 @@ export function StatsPage() {
       });
 
     return () => controller.abort();
-  }, [reloadKey]);
+  }, [reloadKey, key]);
 
   return (
     <div className="stats-page">
@@ -110,7 +166,7 @@ export function StatsPage() {
       <p className="stats-sub">只统计不追踪，原始 IP 与 UA 均不落盘。</p>
 
       {view.kind === 'loading' ? <p className="empty">正在读取…</p> : null}
-      {view.kind === 'locked' ? <Locked onRetry={reload} /> : null}
+      {view.kind === 'locked' ? <Locked onSubmit={submitKey} /> : null}
       {view.kind === 'disabled' ? <Disabled /> : null}
       {view.kind === 'failed' ? (
         <p className="stats-error">
@@ -127,17 +183,45 @@ export function StatsPage() {
 // 三种"没拿到数据"的形态 —— 分开说，别都叫"加载失败"
 // ============================================================================
 
-function Locked({ onRetry }: { onRetry(): void }) {
+/**
+ * 输密码这一步。
+ *
+ * 为什么不是"浏览器弹框"：见文件头。这里自己收，输入框类型是 `password`，
+ * 提交后由父组件存进 `sessionStorage` 并立刻重拉数据。
+ *
+ * 也支持 `?key=<密码>` 一次性进入（父组件的 `readInitialKey` 处理），
+ * 适合在手机上懒得打字的时候用。
+ */
+function Locked({ onSubmit }: { onSubmit(key: string): void }) {
+  const [value, setValue] = useState('');
+
+  const submit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    const key = value.trim();
+    if (key.length > 0) onSubmit(key);
+  };
+
   return (
-    <div className="stats-notice">
-      <p>需要管理员身份。</p>
+    <form className="stats-notice" onSubmit={submit}>
+      <p>这是作者自用的看板，需要密码。</p>
       <p className="dim">
-        浏览器应该已经弹过登录框了。如果刚才点的是取消，点下面重试会再弹一次。
+        密码就是服务端配置的 <code>STATS_PASSWORD</code>；输了之后只记在这个标签页里，
+        关掉就没了。也可以直接用 <code>/stats?key=密码</code> 一次进来。
       </p>
-      <button type="button" className="btn" onClick={onRetry}>
-        重新登录
-      </button>
-    </div>
+      <div className="key-row">
+        <input
+          type="password"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder="管理密码"
+          aria-label="管理密码"
+          autoFocus
+        />
+        <button type="submit" className="btn" disabled={value.trim().length === 0}>
+          进入
+        </button>
+      </div>
+    </form>
   );
 }
 

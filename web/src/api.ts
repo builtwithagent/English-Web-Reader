@@ -68,17 +68,21 @@ export async function fetchArticle(url: string, signal?: AbortSignal): Promise<A
 /**
  * 拉取访问统计数据（`/api/stats`，仅作者自用）。
  *
- * 鉴权走 HTTP Basic，但**前端完全不碰密码**：服务端回 `401 + WWW-Authenticate`
- * 之后是**浏览器自己**弹登录框，输一次，同一会话内后续请求都会自动带上凭证。
- * 前端要做的事只有一件 —— 把这个 401 翻译成"需要管理员身份"，别再重试。
+ * 密码走**自定义头 `X-Stats-Key`**，不是 `Authorization`：
+ * 发布环境的网关会无条件用自己的 Bearer token 覆盖 `Authorization`，那条路在线上
+ * 必然 401（本地却是好的）。自定义头实测原样到达，两个环境都能用，于是只留一条。
  *
+ * `key` 为空就不带这个头 —— 服务端会回 401，页面据此显示输入框，而不是重试。
  * `503` 是"服务端没配 STATS_PASSWORD，这个接口关着"，跟"密码错了"是两回事，
  * 页面上要分开说，否则用户只会看到一个说不清的失败。
  */
-export async function fetchStats(signal?: AbortSignal): Promise<StatsResponse> {
+export async function fetchStats(key?: string, signal?: AbortSignal): Promise<StatsResponse> {
+  const headers: Record<string, string> = {};
+  if (key) headers['X-Stats-Key'] = key;
+
   let res: Response;
   try {
-    res = await fetch('/api/stats', { signal });
+    res = await fetch('/api/stats', { headers, signal });
   } catch (err) {
     if (isAbortError(err)) throw err;
     throw new ApiError('internal_error', '连不上服务器', 0, '检查一下网络，或稍后再试');

@@ -48,14 +48,16 @@ All backend configuration lives in `server/.env`. The upstream is addressed with
 | `LLM_BASE_URL` | no | `https://open.bigmodel.cn/api/paas/v4` | The trailing `/v4` is required — the client appends `/chat/completions` |
 | `LLM_MODEL` | no | `glm-4-flash` | Upstream model names change without changelog entries; check the provider's docs |
 | `LLM_TIMEOUT_MS` | no | `30000` | Per-block timeout |
-| `STATS_PASSWORD` | no | — | Turns on `GET /api/stats`, the JSON behind the `/stats` dashboard, guarded by HTTP Basic auth. Leaving it empty keeps that endpoint **off** (503), not unprotected |
-| `STATS_USER` | no | `admin` | Username for `/api/stats` |
+| `STATS_PASSWORD` | no | — | Turns on `GET /api/stats`, the JSON behind the `/stats` dashboard. Leaving it empty keeps that endpoint **off** (503), not unprotected. It doubles as the dashboard's own login |
+| `STATS_USER` | no | `admin` | Only used by the `Authorization: Basic` path; the dashboard itself asks for the password alone |
 
 Without a key the translation endpoint refuses at the door; fetching, reading and exporting keep working.
 
 `/stats` is a client-side route served by the same bundle, reading its data from `/api/stats`. It is deliberately not linked from anywhere in the UI. It counts page views, fetches and translation volume per day, and never stores raw IPs or user agents — only a per-day salted hash, so visitor counts cannot be traced back to a person.
 
-Two things it **does** store verbatim, because the dashboard is useless without them: the **full URL** of every page you fetch or translate (query string included, fragment dropped), and for each failed fetch a small entry with the URL, the error code and the timestamp — that's what answers "which four pages failed, and why". Both live only in the local `server/data/stats.json`, behind Basic auth. Credentials are sent in cleartext on every request, so only enable it behind HTTPS.
+Two things it **does** store verbatim, because the dashboard is useless without them: the **full URL** of every page you fetch or translate (query string included, fragment dropped), and for each failed fetch a small entry with the URL, the error code and the timestamp — that's what answers "which four pages failed, and why". Both live only in the local `server/data/stats.json`, behind the password.
+
+The dashboard asks for that password itself and sends it in an `X-Stats-Key` header — deliberately not `Authorization`, which some deploy gateways overwrite with a token of their own. It is kept in the tab's `sessionStorage` (or supplied once as `/stats?key=…`), and it travels in cleartext on every request, so only enable it behind HTTPS.
 
 > Both packages ship an `.npmrc` pointing at a China-based npm mirror. Delete those files if you're building from outside China.
 

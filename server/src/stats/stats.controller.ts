@@ -16,7 +16,7 @@ import { StatsService } from './stats.service';
  * 路径落在 `/api` 下（全局前缀生效），于是开发期 5173 的 Vite 代理顺手就转发了，
  * 不用为它单开一条 proxy 规则。
  *
- * 鉴权仍走 HTTP Basic，具体取舍见 stats.auth.ts。
+ * 鉴权是"Basic **或** 自定义头"两条通路，具体取舍见 stats.auth.ts。
  */
 @Controller('stats')
 export class StatsController {
@@ -42,15 +42,16 @@ export class StatsController {
       throw new AppError('stats_locked');
     }
 
-    if (!this.auth.verify(req.get('authorization'))) {
+    if (!this.auth.verify(req.get('authorization')) && !this.auth.verifyKey(req.get('x-stats-key'))) {
       this.auth.registerFailure(ip);
 
-      // `401 + WWW-Authenticate` 会让浏览器**自己**弹出登录框，输一次之后
-      // 同一会话内所有同源请求都会自动带上凭证。也就是说"记住登录"这件事
-      // 浏览器替我们做了，前端一行代码都不用写，更不该知道密码是什么。
+      // **这里刻意不回 `WWW-Authenticate`。**
       //
-      // 不带 realm 的 401 部分浏览器不弹框、只显示一个空白页，排查起来很费劲。
-      res.setHeader('WWW-Authenticate', 'Basic realm="stats", charset="UTF-8"');
+      // 它唯一的用途是让浏览器**自己**弹出登录框。但发布环境的网关会把这个头
+      // 覆盖成它自己的 `Bearer`（见 stats.auth.ts 开头），于是浏览器弹框 → 用户
+      // 输密码 → 凭证发上去又被覆盖 → 又一次 401 → 再弹框，变成一个关不掉的循环。
+      // 与其在两个环境里做两套行为，不如让页面自己收密码（`StatsPage.tsx`），
+      // 本地和线上走同一条路。
       throw new AppError('stats_unauthorized');
     }
 

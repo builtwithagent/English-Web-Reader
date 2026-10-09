@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ConfigService } from '@nestjs/config';
 import { ERROR_SPEC } from '../src/common/errors';
-import { StatsAuth, checkBasicAuth } from '../src/stats/stats.auth';
+import { StatsAuth, checkBasicAuth, checkStatsKey } from '../src/stats/stats.auth';
 import { buildStatsResponse } from '../src/stats/stats.api';
 import { createPageViewMiddleware, pathnameOf, shouldCount } from '../src/stats/stats.middleware';
 import { StatsService } from '../src/stats/stats.service';
@@ -335,6 +335,41 @@ describe('checkBasicAuth', () => {
 
   it('密码配成空串时，空密码也进不去（fail closed）', () => {
     expect(checkBasicAuth(basic('admin', ''), 'admin', '')).toBe(false);
+  });
+});
+
+describe('checkStatsKey（自定义头那条通路）', () => {
+  it('密码对就通过 —— 不需要用户名', () => {
+    expect(checkStatsKey('s3cret', 's3cret')).toBe(true);
+  });
+
+  it('密码错、大小写不同、多一个字符都不通过', () => {
+    expect(checkStatsKey('wrong', 's3cret')).toBe(false);
+    expect(checkStatsKey('S3CRET', 's3cret')).toBe(false);
+    expect(checkStatsKey('s3cret ', 's3cre')).toBe(false);
+  });
+
+  it('缺头 / 空串 / 没配密码 全都不通过（fail closed）', () => {
+    expect(checkStatsKey(undefined, 's3cret')).toBe(false);
+    expect(checkStatsKey('', 's3cret')).toBe(false);
+    expect(checkStatsKey('s3cret', '')).toBe(false);
+    expect(checkStatsKey('', '')).toBe(false);
+  });
+
+  it('两端空白容忍（从输入框或 ?key= 粘过来最容易多带一个空格）', () => {
+    expect(checkStatsKey(' s3cret ', 's3cret')).toBe(true);
+  });
+
+  it('中文与含冒号的密码按原样比对', () => {
+    expect(checkStatsKey('密码', '密码')).toBe(true);
+    expect(checkStatsKey('a:b:c', 'a:b:c')).toBe(true);
+  });
+
+  it('网关覆盖 Authorization 之后，Basic 那条路失败但这条路仍然通过', () => {
+    // 线上真实形态：应用收到的是网关自己的 Bearer，客户端发的 Basic 根本到不了
+    const stats = new StatsAuth(fakeConfig({ STATS_PASSWORD: 's3cret' }));
+    expect(stats.verify('Bearer eyJhbGciOi...')).toBe(false);
+    expect(stats.verifyKey('s3cret')).toBe(true);
   });
 });
 

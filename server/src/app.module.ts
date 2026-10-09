@@ -4,6 +4,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { ArticleModule } from './article/article.module';
+import { HealthController } from './common/health.controller';
 import { StatsModule } from './stats/stats.module';
 import { TranslateModule } from './translate/translate.module';
 
@@ -46,5 +47,6 @@ const WEB_DIST = join(__dirname, '..', '..', 'web', 'dist');
         ]
       : []),
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
